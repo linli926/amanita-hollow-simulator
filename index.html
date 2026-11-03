@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Amanita Hollow</title>
+<meta name="description" content="An interactive outbreak game: design a pathogen, estimate R₀ from noisy field data, run a survival-analysis clinical trial, and command the response across a valley of villages.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo-main">AMANITA HOLLOW — EPIDEMIC INTELLIGENCE TERMINAL</div>
+    <div class="logo-sub">Transmission models · Statistical inference · Survival analysis · v1.0</div>
+  </div>
+  <nav class="mode-toggle" aria-label="Mode">
+    <button class="mode-btn on" data-mode="architect">☣ I · OUTBREAK ARCHITECT</button>
+    <button class="mode-btn" data-mode="field">⚕ II · FIELD EPIDEMIOLOGIST</button>
+    <button class="mode-btn" data-mode="trial">✚ III · CLINICAL TRIAL</button>
+    <button class="mode-btn" data-mode="response">⌖ IV · OUTBREAK RESPONSE</button>
+  </nav>
+</header>
+
+<div id="storyBanner"></div>
+
+<!-- ═════════════════════════ I · OUTBREAK ARCHITECT ═════════════════════════ -->
+<main class="view on" id="view-architect">
+  <aside class="sidebar">
+    <div>
+      <div class="sec-head">Pathogen design</div>
+      <div class="param">
+        <div class="param-top"><span>R₀ (basic reproduction no.)</span><span class="param-val" id="a-r0-val"></span></div>
+        <input type="range" id="a-r0" min="0.5" max="8" step="0.1" value="2.5">
+        <div class="scale-labels"><span>fizzles</span><span style="color:var(--red-bright)">1.0</span><span>explosive</span></div>
+      </div>
+      <div class="param">
+        <div class="param-top"><span>Latent period (1/σ)</span><span class="param-val" id="a-lat-val"></span></div>
+        <input type="range" id="a-lat" min="0" max="10" step="0.5" value="3">
+        <div class="param-hint">Infected but not yet infectious. 0 = SIRD model.</div>
+      </div>
+      <div class="param">
+        <div class="param-top"><span>Infectious period (1/γ)</span><span class="param-val" id="a-inf-val"></span></div>
+        <input type="range" id="a-inf" min="2" max="21" step="0.5" value="6">
+      </div>
+      <div class="param">
+        <div class="param-top"><span>Case fatality ratio</span><span class="param-val" id="a-cfr-val"></span></div>
+        <input type="range" id="a-cfr" min="0" max="30" step="0.5" value="3">
+      </div>
+    </div>
+    <div>
+      <div class="sec-head">Valley population</div>
+      <div class="param">
+        <div class="param-top"><span>Population N</span><span class="param-val" id="a-n-val"></span></div>
+        <input type="range" id="a-n" min="500" max="50000" step="500" value="5000">
+      </div>
+      <div class="param">
+        <div class="param-top"><span>Initially infected</span><span class="param-val" id="a-i0-val"></span></div>
+        <input type="range" id="a-i0" min="1" max="50" step="1" value="3">
+      </div>
+      <div class="param">
+        <div class="param-top"><span>Initially immune</span><span class="param-val" id="a-imm-val"></span></div>
+        <input type="range" id="a-imm" min="0" max="90" step="1" value="0">
+      </div>
+    </div>
+    <div>
+      <div class="sec-head">Simulation engine</div>
+      <div class="seg" id="a-engine">
+        <button data-engine="ode" class="on">Deterministic · RK4</button>
+        <button data-engine="stoch">Stochastic ensemble</button>
+      </div>
+      <div class="param" id="a-runs-wrap" style="margin-top:10px;display:none">
+        <div class="param-top"><span>Realisations</span><span class="param-val" id="a-runs-val"></span></div>
+        <input type="range" id="a-runs" min="10" max="200" step="10" value="60">
+        <div class="param-hint" id="a-method-hint"></div>
+      </div>
+    </div>
+    <div>
+      <button class="btn btn-red" id="a-release">▶ RELEASE PATHOGEN</button>
+      <div class="btn-row" style="margin-top:6px">
+        <button class="btn btn-blue" data-goto="field" disabled id="a-goto-field">⚕ INVESTIGATE →</button>
+        <button class="btn btn-violet" data-goto="response" id="a-goto-resp">⌖ RESPOND →</button>
+      </div>
+    </div>
+  </aside>
+
+  <section class="content">
+    <div class="panel">
+      <div class="panel-head">
+        <div><div class="panel-title">Epidemic curve — Amanita Hollow</div><div class="panel-sub" id="a-chart-sub">SEIRD · fraction of population · hover for values</div></div>
+        <div class="panel-sub" id="a-day">Day 0</div>
+      </div>
+      <div class="canvas-wrap tall"><canvas id="a-chart"></canvas></div>
+      <div class="legend">
+        <span><i style="background:var(--S)"></i>Susceptible</span>
+        <span><i style="background:var(--E)"></i>Exposed</span>
+        <span><i style="background:var(--I);height:3px"></i>Infectious</span>
+        <span><i style="background:var(--R)"></i>Recovered</span>
+        <span><i style="background:var(--D)"></i>Dead</span>
+        <span id="a-leg-band" style="display:none"><i class="box" style="background:rgba(192,57,43,.25)"></i>90% band of I (ensemble)</span>
+      </div>
+    </div>
+
+    <div class="kpi-row">
+      <div class="stat-box"><div class="stat-v" style="color:var(--I)" id="a-peak">—</div><div class="stat-l">Peak infectious</div></div>
+      <div class="stat-box"><div class="stat-v" id="a-peakday">—</div><div class="stat-l">Day of peak</div></div>
+      <div class="stat-box"><div class="stat-v sm" style="color:var(--R)" id="a-attack">—</div><div class="stat-l" id="a-attack-l">Attack rate (sim · final-size eq.)</div></div>
+      <div class="stat-box"><div class="stat-v" style="color:var(--D)" id="a-deaths">—</div><div class="stat-l">Deaths</div></div>
+      <div class="stat-box"><div class="stat-v" id="a-hit">—</div><div class="stat-l">Herd immunity threshold</div></div>
+      <div class="stat-box"><div class="stat-v sm" id="a-dbl">—</div><div class="stat-l">Early growth rate r (/day) · doubling time</div></div>
+      <div class="stat-box"><div class="stat-v sm" id="a-pmajor">—</div><div class="stat-l" id="a-pmajor-l">P(major outbreak) · branching theory</div></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="panel">
+        <div class="panel-head"><div><div class="panel-title" id="a-side-title">Final size vs R₀</div><div class="panel-sub" id="a-side-sub">Kermack–McKendrick final-size relation</div></div></div>
+        <div class="canvas-wrap short"><canvas id="a-side"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><div class="panel-title">Situation assessment</div></div>
+        <div id="a-insight" style="font-size:11px;line-height:1.75;color:var(--text)"></div>
+      </div>
+    </div>
+
+    <details class="methods">
+      <summary>▸ METHODS — MODEL &amp; ALGORITHMS</summary>
+      <div class="method-grid">
+        <div><h4>SEIRD compartmental model</h4><div class="tex" data-tex="\begin{aligned}\dot S&=-\beta SI/N\\ \dot E&=\beta SI/N-\sigma E\\ \dot I&=\sigma E-\gamma I\\ \dot R&=\gamma(1-p)I,\;\; \dot D=\gamma p I\end{aligned}" data-display="1"></div>
+          <p>β = R₀γ, σ = 1/latent, γ = 1/infectious, p = CFR. Integrated with classical 4th-order Runge–Kutta (dt = 0.1 d).</p></div>
+        <div><h4>Final size &amp; herd immunity</h4><div class="tex" data-tex="z = s_0\left(1-e^{-R_0 z}\right),\qquad \text{HIT}=1-\tfrac{1}{R_0}" data-display="1"></div>
+          <p>Solved by Newton's method. Holds for any latent-period distribution.</p><p class="cite">Kermack &amp; McKendrick (1927)</p></div>
+        <div><h4>Growth rate (Euler–Lotka)</h4><div class="tex" data-tex="R_0=(1+rL)(1+rD)" data-display="1"></div>
+          <p>Links the early exponential growth rate r to R₀ for exponentially distributed latent (L) and infectious (D) periods.</p><p class="cite">Wallinga &amp; Lipsitch (2007)</p></div>
+        <div><h4>Gillespie stochastic simulation</h4><div class="tex" data-tex="\tau\sim\text{Exp}(a_0),\; a_0=\textstyle\sum_j a_j(x)" data-display="1"></div>
+          <p>Exact simulation of the continuous-time Markov chain. For N &gt; 8,000 a binomial tau-leap (dt = 0.25 d) is used instead.</p><p class="cite">Gillespie (1977)</p></div>
+        <div><h4>Probability of a major outbreak</h4><div class="tex" data-tex="P(\text{major}) = 1-\left(1/R_{\text{eff}}\right)^{I_0}" data-display="1"></div>
+          <p>Branching-process approximation: each early case's offspring are geometric with mean R. Compare it with the ensemble's bimodal final-size histogram.</p></div>
+      </div>
+    </details>
+  </section>
+</main>
+
+<!-- ═════════════════════════ II · FIELD EPIDEMIOLOGIST ═════════════════════════ -->
+<main class="view" id="view-field">
+  <aside class="sidebar">
+    <div>
+      <div class="sec-head">Field report <span class="aside" id="f-case-id"></span></div>
+      <div id="f-report" class="note"></div>
+    </div>
+    <div>
+      <div class="sec-head">Surveillance clock</div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+        <span style="font-size:11px">Data available to</span><span id="f-today" style="font-size:18px;color:var(--bright)">Day —</span>
+      </div>
+      <button class="btn" id="f-advance">⏭ WAIT 7 DAYS FOR MORE DATA</button>
+    </div>
+    <div>
+      <div class="sec-head">Your estimate</div>
+      <div class="param">
+        <div class="param-top"><span>R₀</span><span class="param-val" id="f-r0-val" style="color:var(--blue-bright)"></span></div>
+        <input type="range" id="f-r0" min="0.8" max="6" step="0.02" value="1.5">
+      </div>
+      <div class="param">
+        <div class="param-top"><span>Reporting rate ρ</span><span class="param-val" id="f-rho-val" style="color:var(--blue-bright)"></span></div>
+        <input type="range" id="f-rho" min="0.05" max="1" step="0.01" value="0.5">
+        <div class="param-hint">Fraction of infections that reach the clinic.</div>
+      </div>
+    </div>
+    <div class="score-card">
+      <div class="big" id="f-score">—</div>
+      <div class="lbl">LIKELIHOOD FIT SCORE</div>
+      <div class="status" id="f-status">Adjust R₀ and ρ to match the clinic data</div>
+    </div>
+    <div>
+      <button class="btn btn-blue" id="f-mle">∑ AUTO-FIT · MAXIMUM LIKELIHOOD</button>
+      <button class="btn btn-green" id="f-reveal">◉ REVEAL THE TRUTH</button>
+      <button class="btn" id="f-new">⟳ NEW MYSTERY OUTBREAK</button>
+      <button class="btn" id="f-csv">⤓ DOWNLOAD CASE DATA (CSV)</button>
+    </div>
+  </aside>
+
+  <section class="content">
+    <div class="panel">
+      <div class="panel-head">
+        <div><div class="panel-title">Daily reported cases — clinic records</div><div class="panel-sub">bars = observed · blue = your model · teal = MLE fit + forecast envelope</div></div>
+      </div>
+      <div class="canvas-wrap tall">
+        <canvas id="f-chart"></canvas>
+        <div class="overlay-msg" id="f-solved">✓ OUTBREAK IDENTIFIED<br><span id="f-solved-text" style="font-size:11px"></span></div>
+      </div>
+      <div class="legend">
+        <span><i class="box" style="background:var(--amber)"></i>Reported cases</span>
+        <span><i style="background:var(--blue-bright)"></i>Your model E[cases]</span>
+        <span><i style="background:var(--teal)"></i>MLE fit</span>
+        <span><i class="box" style="background:rgba(95,179,161,.25)"></i>Profile-likelihood forecast envelope</span>
+        <span><i class="box" style="background:rgba(232,220,196,.35)"></i>Future (revealed)</span>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="panel">
+        <div class="panel-head">
+          <div class="tabstrip" id="f-tabs">
+            <button data-tab="profile" class="on">PROFILE LIKELIHOOD</button>
+            <button data-tab="rt">Rₜ · CORI</button>
+            <button data-tab="growth">GROWTH · POISSON GLM</button>
+          </div>
+        </div>
+        <div class="canvas-wrap"><canvas id="f-side"></canvas></div>
+        <div class="panel-sub" id="f-side-caption" style="margin-top:4px"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><div class="panel-title">Estimates</div><div class="panel-sub" id="f-est-sub"></div></div>
+        <div id="f-estimates" style="font-size:11px"></div>
+      </div>
+    </div>
+
+    <details class="methods">
+      <summary>▸ METHODS — INFERENCE</summary>
+      <div class="method-grid">
+        <div><h4>Observation model</h4><div class="tex" data-tex="y_t \sim \text{NegBin}\!\left(\rho\,\iota_t(R_0, I_0),\,k\right)" data-display="1"></div>
+          <p>ι<sub>t</sub> = daily new infections from the SEIR ODE. Variance μ + μ²/k allows over-dispersion. The truth is one stochastic (Gillespie / tau-leap) realisation.</p></div>
+        <div><h4>Maximum likelihood</h4><div class="tex" data-tex="\hat\theta=\arg\max_\theta \textstyle\sum_t \log f(y_t\mid\theta)" data-display="1"></div>
+          <p>θ = (log R₀, logit ρ, log I₀, log k), optimised with the Nelder–Mead simplex from several starts.</p><p class="cite">Nelder &amp; Mead (1965)</p></div>
+        <div><h4>Profile likelihood CI</h4><div class="tex" data-tex="\{R_0: 2[\ell(\hat\theta)-\ell_p(R_0)]\le\chi^2_{1,0.95}=3.84\}" data-display="1"></div>
+          <p>Nuisance parameters are re-optimised at each R₀. The forecast envelope spans the trajectories of all R₀ inside the interval.</p><p class="cite">Wilks (1938)</p></div>
+        <div><h4>Misspecification adjustment</h4><div class="tex" data-tex="\hat c=\max\!\Big(1,\;\hat\phi\,\frac{1+\hat r_1}{1-\hat r_1}\Big)" data-display="1"></div>
+          <p>The truth is a <em>stochastic</em> epidemic, so its residuals around the ODE mean are over-dispersed (φ̂) and serially correlated (r̂₁). Scaling the cut-off by ĉ (quasi-likelihood) raised empirical coverage of the nominal 95% interval from ≈70% to ≈90% in a 120-outbreak simulation study.</p></div>
+        <div><h4>Growth-rate regression</h4><div class="tex" data-tex="\log \mathbb E[y_t]=a+rt" data-display="1"></div>
+          <p>Poisson GLM fitted by iteratively reweighted least squares; quasi-Poisson SE. Converted with R₀ = (1+rL)(1+rD).</p></div>
+        <div><h4>Instantaneous reproduction number</h4><div class="tex" data-tex="R_t\mid y\sim\Gamma\!\left(a+\!\!\sum_{s\in W}\! y_s,\;\Big(\tfrac1b+\!\!\sum_{s\in W}\!\Lambda_s\Big)^{-1}\right)" data-display="1"></div>
+          <p>Λ<sub>s</sub> = Σ y<sub>s−u</sub>w<sub>u</sub> with the SEIR generation interval w (hypo-exponential). Window 7 days.</p><p class="cite">Cori et al. (2013)</p></div>
+      </div>
+    </details>
+  </section>
+</main>
+
+<!-- ═════════════════════════ III · CLINICAL TRIAL ═════════════════════════ -->
+<main class="view" id="view-trial">
+  <aside class="sidebar">
+    <div>
+      <div class="sec-head">Trial design</div>
+      <div class="param">
+        <div class="param-top"><span>Patients enrolled</span><span class="param-val" id="t-n-val"></span></div>
+        <input type="range" id="t-n" min="40" max="1500" step="20" value="300">
+        <div class="param-hint">Permuted-block randomisation 1:1 (blocks of 4)</div>
+      </div>
+      <div class="param">
+        <div class="param-top"><span>Accrual period</span><span class="param-val" id="t-acc-val"></span></div>
+        <input type="range" id="t-acc" min="0" max="90" step="5" value="30">
+      </div>
+      <div class="param">
+        <div class="param-top"><span>Minimum follow-up</span><span class="param-val" id="t-fu-val"></span></div>
+        <input type="range" id="t-fu" min="14" max="120" step="2" value="60">
+      </div>
+      <div class="param">
+        <div class="param-top"><span>Loss to follow-up</span><span class="param-val" id="t-drop-val"></span></div>
+        <input type="range" id="t-drop" min="0" max="40" step="1" value="5">
+        <div class="param-hint">% lost per 60 days (non-informative censoring)</div>
+      </div>
+    </div>
+    <div>
+      <div class="sec-head">Nature's parameters <span class="aside">(hidden from analysis)</span></div>
+      <div class="param">
+        <div class="param-top"><span>Treatment hazard ratio</span><span class="param-val" id="t-hr-val" style="color:var(--green-bright)"></span></div>
+        <input type="range" id="t-hr" min="0.25" max="1.5" step="0.05" value="0.65">
+      </div>
+      <div class="param">
+        <div class="param-top"><span>Control 60-day mortality</span><span class="param-val" id="t-m60-val"></span></div>
+        <input type="range" id="t-m60" min="5" max="80" step="1" value="30">
+      </div>
+      <div class="param">
+        <div class="param-top"><span>Weibull shape k</span><span class="param-val" id="t-shape-val"></span></div>
+        <input type="range" id="t-shape" min="0.5" max="3" step="0.1" value="1.2">
+        <div class="param-hint">k &lt; 1 early deaths · k = 1 exponential · k &gt; 1 hazard rises</div>
+      </div>
+      <div class="param">
+        <div class="param-top"><span>HR per +10 years age</span><span class="param-val" id="t-hrage-val"></span></div>
+        <input type="range" id="t-hrage" min="1" max="2" step="0.05" value="1.3">
+      </div>
+      <div class="param">
+        <div class="param-top"><span>HR for comorbidity</span><span class="param-val" id="t-hrcom-val"></span></div>
+        <input type="range" id="t-hrcom" min="1" max="4" step="0.1" value="1.8">
+      </div>
+    </div>
+    <div>
+      <button class="btn btn-green" id="t-run">✚ RUN THE TRIAL</button>
+      <button class="btn" id="t-power">⚄ SIMULATE POWER (300 TRIALS)</button>
+      <button class="btn" id="t-csv" disabled>⤓ DOWNLOAD PATIENT DATA (CSV)</button>
+    </div>
+    <div>
+      <div class="sec-head">Power analysis · Schoenfeld</div>
+      <div id="t-design" style="font-size:10.5px;line-height:1.75"></div>
+    </div>
+  </aside>
+
+  <section class="content">
+    <div class="panel">
+      <div class="panel-head">
+        <div><div class="panel-title">Kaplan–Meier survival — treatment vs control</div><div class="panel-sub">shaded = 95% log–log Greenwood bands · ticks = censored · dashed = median</div></div>
+      </div>
+      <div class="canvas-wrap tall"><canvas id="t-km"></canvas></div>
+      <div class="risk-table" id="t-risk"></div>
+      <div class="legend">
+        <span><i style="background:var(--green-bright);height:3px"></i>Treatment</span>
+        <span><i style="background:var(--red-bright);height:3px"></i>Control</span>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="panel">
+        <div class="panel-head">
+          <div class="tabstrip" id="t-tabs">
+            <button data-tab="forest" class="on">COX FOREST PLOT</button>
+            <button data-tab="loglog">PH CHECK · LOG(−LOG S)</button>
+            <button data-tab="na">NELSON–AALEN</button>
+          </div>
+        </div>
+        <div class="canvas-wrap"><canvas id="t-side"></canvas></div>
+        <div class="panel-sub" id="t-side-caption" style="margin-top:4px"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><div class="panel-title">Statistical report</div></div>
+        <div id="t-report" style="font-size:11px;color:var(--muted)">Run the trial to generate results.</div>
+      </div>
+    </div>
+
+    <details class="methods">
+      <summary>▸ METHODS — SURVIVAL ANALYSIS</summary>
+      <div class="method-grid">
+        <div><h4>Data-generating model</h4><div class="tex" data-tex="H(t\mid x)=\left(t/\lambda\right)^{k} e^{\beta_1 \text{trt}+\beta_2 \frac{\text{age}-55}{10}+\beta_3\text{comorb}}" data-display="1"></div>
+          <p>Weibull proportional hazards; staggered uniform accrual; administrative + exponential dropout censoring.</p></div>
+        <div><h4>Kaplan–Meier &amp; Greenwood</h4><div class="tex" data-tex="\hat S(t)=\prod_{t_i\le t}\Big(1-\frac{d_i}{n_i}\Big),\;\; \widehat{\text{Var}}=\hat S^2\sum\frac{d_i}{n_i(n_i-d_i)}" data-display="1"></div>
+          <p>CIs on the log(−log) scale. Median CI from where the band crosses 0.5 (Brookmeyer–Crowley).</p><p class="cite">Kaplan &amp; Meier (1958); Greenwood (1926)</p></div>
+        <div><h4>Log-rank test</h4><div class="tex" data-tex="\chi^2=\frac{\big(\sum_i O_{1i}-E_{1i}\big)^2}{\sum_i \frac{d_i n_{0i} n_{1i}(n_i-d_i)}{n_i^2(n_i-1)}}" data-display="1"></div>
+          <p class="cite">Mantel (1966); Peto &amp; Peto (1972)</p></div>
+        <div><h4>Cox proportional hazards</h4><div class="tex" data-tex="L(\beta)=\prod_{i:\delta_i=1}\frac{e^{x_i^\top\beta}}{\sum_{j\in\mathcal R(t_i)}e^{x_j^\top\beta}}" data-display="1"></div>
+          <p>Breslow ties; Newton–Raphson with step-halving; Wald CIs; likelihood-ratio test; Harrell's C-index.</p><p class="cite">Cox (1972); Harrell et al. (1982)</p></div>
+        <div><h4>Sample size</h4><div class="tex" data-tex="D=\frac{(z_{1-\alpha/2}+z_{1-\beta})^2}{\pi(1-\pi)\,(\log \text{HR})^2}" data-display="1"></div>
+          <p>Number of deaths needed; checked against Monte Carlo power from repeated simulated trials.</p><p class="cite">Schoenfeld (1983)</p></div>
+      </div>
+    </details>
+  </section>
+</main>
+
+<!-- ═════════════════════════ IV · OUTBREAK RESPONSE ═════════════════════════ -->
+<main class="view" id="view-response">
+  <aside class="sidebar">
+    <div>
+      <div class="sec-head">Command status</div>
+      <div class="stat-grid">
+        <div class="stat-box"><div class="stat-v" id="g-week">—</div><div class="stat-l">Week</div></div>
+        <div class="stat-box"><div class="stat-v" style="color:#b9a2e6" id="g-credits">—</div><div class="stat-l">Credits left</div></div>
+        <div class="stat-box"><div class="stat-v" style="color:var(--amber)" id="g-cases">—</div><div class="stat-l">Reported cases</div></div>
+        <div class="stat-box"><div class="stat-v" style="color:var(--D)" id="g-deaths">—</div><div class="stat-l">Deaths</div></div>
+        <div class="stat-box wide"><div class="stat-v sm" id="g-rt">—</div><div class="stat-l">Valley Rₜ estimate (Cori, from reported cases)</div></div>
+      </div>
+    </div>
+    <div class="village-card" id="g-village"></div>
+    <div>
+      <div class="sec-head">Valley-wide</div>
+      <div class="toggle-list" id="g-global"></div>
+    </div>
+    <div>
+      <button class="btn btn-violet" id="g-advance">▶ ADVANCE ONE WEEK</button>
+      <div class="seg" id="g-diff" style="margin-top:8px">
+        <button data-diff="easy">EASY</button>
+        <button data-diff="normal" class="on">NORMAL</button>
+        <button data-diff="hard">HARD</button>
+      </div>
+      <button class="btn" id="g-new" style="margin-top:6px">⟳ NEW CAMPAIGN</button>
+    </div>
+  </aside>
+
+  <section class="content">
+    <div class="summary" id="g-summary"></div>
+    <div class="panel">
+      <div class="panel-head">
+        <div><div class="panel-title">Map of the Hollow</div><div class="panel-sub">colour = reported cases per 1,000 this week · click a village to give orders</div></div>
+        <div class="panel-sub" id="g-day">Day 0</div>
+      </div>
+      <div class="map-wrap"><canvas id="g-map"></canvas></div>
+    </div>
+    <div class="grid-2">
+      <div class="panel">
+        <div class="panel-head"><div><div class="panel-title">Reported cases by village</div><div class="panel-sub">daily, 7-day mean · shaded = hospital overload</div></div></div>
+        <div class="canvas-wrap"><canvas id="g-chart"></canvas></div>
+        <div class="legend" id="g-legend"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><div class="panel-title">Dispatch log</div></div>
+        <div class="feed" id="g-feed"></div>
+      </div>
+    </div>
+    <details class="methods">
+      <summary>▸ METHODS — METAPOPULATION MODEL</summary>
+      <div class="method-grid">
+        <div><h4>Coupled SEIRD villages</h4><div class="tex" data-tex="\lambda_k(t)=\beta\, b_k(t)\sum_j C_{kj}\frac{I_j}{N_j}" data-display="1"></div>
+          <p>Each village is a stochastic SEIRD (binomial tau-leap, dt = 0.25 d). b<sub>k</sub> = your interventions × events. C = row-stochastic mixing.</p></div>
+        <div><h4>Gravity-model mobility</h4><div class="tex" data-tex="C_{kj}\propto m\,\frac{N_k N_j}{d_{kj}^2}\;(j\neq k),\quad C_{kk}=1-m" data-display="1"></div>
+          <p>Travel bans cut a village's outside mixing by 85%.</p><p class="cite">Zipf (1946); Xia, Bjørnstad &amp; Grenfell (2004)</p></div>
+        <div><h4>Next-generation matrix</h4><div class="tex" data-tex="K_{kj}=\frac{\beta b_k}{\gamma}C_{kj}\frac{S_k}{N_j},\qquad R_t=\rho(K)" data-display="1"></div>
+          <p>The true network Rₜ is the spectral radius of K (power iteration), shown in the after-action report against your Cori estimate.</p><p class="cite">Diekmann, Heesterbeek &amp; Metz (1990)</p></div>
+        <div><h4>Counterfactual</h4><p>At the end, 30 replicate epidemics with identical hidden parameters, seeding and events but <em>no</em> interventions give the deaths you were up against. Your grade is your deaths relative to that median.</p></div>
+      </div>
+    </details>
+  </section>
+</main>
+
+<footer>
+  <span>Amanita Hollow is fictional. All outbreaks, patients and villages are simulated.</span>
+  <span>Built for infectious-disease modelling &amp; survival-analysis coursework · <a href="https://github.com/linli926/amanita-hollow-simulator">source</a></span>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
