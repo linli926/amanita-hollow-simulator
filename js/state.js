@@ -7,6 +7,8 @@ export const state = {
   outbreak: null,          // { R0, latent, infectious, cfr, N, I0, immune, seed }
   /** Set by Clinical Trial when the treatment shows a significant benefit. */
   treatment: null,         // { trueHR, estHR, lo, hi, p }
+  /** Set by Vaccine Lab when the Phase III trial meets the licensing criteria. */
+  vaccine: null,           // { ve (true), est, lo, hi, week }
   /** Score history across modes. */
   log: [],
 };

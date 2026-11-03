@@ -4,6 +4,7 @@ import { initArchitect, enterArchitect } from './modes/architect.js';
 import { initField, enterField } from './modes/field.js';
 import { initTrial, enterTrial } from './modes/trial.js';
 import { initResponse, enterResponse, leaveResponse } from './modes/response.js';
+import { initLab, enterLab } from './modes/lab.js';
 import { $, $$, renderTeX } from './ui/dom.js';
 import { subscribe } from './state.js';
 
@@ -11,6 +12,7 @@ const MODES = {
   architect: enterArchitect,
   field: enterField,
   trial: enterTrial,
+  lab: enterLab,
   response: enterResponse,
 };
 
@@ -46,6 +48,7 @@ function boot() {
   initArchitect(ctx);
   initField(ctx);
   initTrial(ctx);
+  initLab(ctx);
   initResponse(ctx);
   $$('.mode-btn').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
   $$('[data-goto]').forEach(b => b.addEventListener('click', () => setMode(b.dataset.goto)));

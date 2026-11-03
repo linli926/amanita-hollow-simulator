@@ -23,7 +23,8 @@ export const DIFFICULTY = {
 
 export const WEEKS = 20;
 export const MOBILITY = 0.08;
-export const VACCINE_WEEK = 6;
+export const VACCINE_WEEK = 8;          // unlicensed batch, if no Phase III trial succeeded
+export const UNLICENSED_VE = 0.5;
 export const COMPASSIONATE_WEEK = 10;
 const OVERLOAD = 0.03; // prevalence above which a village's wards overflow
 
@@ -54,6 +55,8 @@ export function createWorld(difficulty = 'normal', seed = 1, opts = {}) {
   const world = {
     seed, difficulty, hidden, seedVillage, events, villages,
     treatmentHR: opts.treatmentHR ?? null,
+    vaccineWeek: opts.vaccine?.week ?? VACCINE_WEEK,
+    vaccineEff: opts.vaccine?.ve ?? UNLICENSED_VE,
     rng: makeRng(seed ^ 0x2545f491),
     state: metapopInit(villages, seedVillage, D.seeds),
     day: 0, week: 0,
@@ -86,6 +89,7 @@ export function weeklyCost(world) {
 
 export function actionAvailable(world, action) {
   if (action === 'treatment') return world.treatmentHR !== null || world.week >= COMPASSIONATE_WEEK;
+  if (action === 'vaccine') return world.week + 1 >= world.vaccineWeek;
   const u = ACTIONS[action].unlock;
   return !u || world.week >= u;
 }
@@ -167,7 +171,7 @@ function dayParams(world) {
   const vaccDoses = villages.map((v, k) => (policy[k].vaccine ? 0.02 * v.N : 0));
   return {
     beta: hidden.R0 / hidden.infectious, sigma: 1 / hidden.latent, gamma: 1 / hidden.infectious,
-    betaMult, C, cfr, rho, vaccDoses, vaccEff: 0.9, overloaded,
+    betaMult, C, cfr, rho, vaccDoses, vaccEff: world.vaccineEff, overloaded,
   };
 }
 

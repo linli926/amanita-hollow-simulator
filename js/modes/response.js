@@ -1,7 +1,7 @@
 // Mode IV — Outbreak Response: command interventions across the valley, week by week.
 
 import { createWorld, playWeek, weeklyCost, actionAvailable, totals, counterfactual, grade, refreshMixing,
-  ACTIONS, TREATMENT_COST, WEEKS, VACCINE_WEEK, COMPASSIONATE_WEEK } from '../models/world.js';
+  ACTIONS, TREATMENT_COST, WEEKS, COMPASSIONATE_WEEK } from '../models/world.js';
 import { generationInterval } from '../models/theory.js';
 import { coriRt } from '../stats/inference.js';
 import { randomSeed } from '../stats/rng.js';
@@ -36,8 +36,10 @@ export function initResponse(ctx) {
 export function enterResponse(banner) {
   if (!world) newGame();
   syncTreatment();
+  syncVaccine();
   banner(`<em>EMERGENCY COMMAND · AMANITA HOLLOW.</em> The spores have reached the valley's villages, but nobody knows the true R₀. You see only what the clinics report. ` +
-    `Each week, spend credits on lockdowns, travel bans, testing and (from week ${VACCINE_WEEK}) vaccines. ` +
+    `Each week, spend credits on lockdowns, travel bans, testing and (from week ${world.vaccineWeek}) vaccines. ` +
+    (state.vaccine ? `<em>The vaccine is licensed</em> (Phase III VE ${(state.vaccine.est * 100).toFixed(0)}%). ` : `Without a licensed vaccine from mode V, only an unproven batch arrives in week ${world.vaccineWeek}. `) +
     (state.treatment ? `<em>Volvarin is approved</em> (trial HR ${state.treatment.estHR.toFixed(2)}).` : `Treatment needs a significant trial result from mode III (or compassionate use from week ${COMPASSIONATE_WEEK}).`) +
     ` Save as many lives as you can.`);
   active = true;
@@ -45,6 +47,16 @@ export function enterResponse(banner) {
 }
 
 export function leaveResponse() { active = false; cancelAnimationFrame(loopId); }
+
+function syncVaccine() {
+  if (world && state.vaccine && world.vaccineLicensed !== state.vaccine) {
+    world.vaccineLicensed = state.vaccine;
+    world.vaccineEff = state.vaccine.ve;
+    world.vaccineWeek = Math.max(world.week + 1, Math.min(world.vaccineWeek, state.vaccine.week));
+    world.log.push({ week: world.week + 1, cls: 'ok', msg: `Vaccine licensed after Phase III (VE ${(state.vaccine.est * 100).toFixed(0)}%). Campaigns can start in week ${world.vaccineWeek}.` });
+    renderFeed(); renderSidebar();
+  }
+}
 
 function syncTreatment() {
   if (world && state.treatment && world.treatmentHR === null) {
@@ -55,7 +67,8 @@ function syncTreatment() {
 }
 
 function newGame() {
-  world = createWorld(difficulty, randomSeed(), { treatmentHR: state.treatment?.trueHR ?? null });
+  world = createWorld(difficulty, randomSeed(), { treatmentHR: state.treatment?.trueHR ?? null, vaccine: state.vaccine ? { week: state.vaccine.week, ve: state.vaccine.ve } : null });
+  world.vaccineLicensed = state.vaccine;
   shownDay = 0;
   selected = 0;
   summaryChart = null;
@@ -121,7 +134,7 @@ function renderSidebar() {
   list.className = 'toggle-list';
   for (const [key, a] of Object.entries(ACTIONS)) {
     const avail = actionAvailable(world, key);
-    const hint = avail ? a.hint : `available from week ${a.unlock}`;
+    const hint = avail ? (key === 'vaccine' ? `2% of residents per day · ${state.vaccine ? 'licensed' : 'unproven batch'}` : a.hint) : `available from week ${key === 'vaccine' ? world.vaccineWeek : a.unlock}`;
     list.appendChild(toggleBtn(a.label, hint, `${a.cost(v)}/wk`, p[key], !avail || world.over || animating, () => {
       p[key] = !p[key];
       if (key === 'travel') refreshMixing(world);
@@ -206,7 +219,7 @@ async function advance() {
   const rep = wk.reduce((s, h) => s + h.reported.reduce((a, b) => a + b, 0), 0);
   const dth = wk.reduce((s, h) => s + h.newDeaths.reduce((a, b) => a + b, 0), 0);
   world.log.push({ week: world.week, cls: dth > 0 ? 'alert' : '', msg: `Week ${world.week} report: ${rep} new cases reported, ${dth} deaths.` });
-  if (wasVaccineLocked && actionAvailable(world, 'vaccine')) world.log.push({ week: world.week + 1, cls: 'ok', msg: 'The Sporeford lab has produced a vaccine. Vaccination campaigns are now available.' });
+  if (wasVaccineLocked && actionAvailable(world, 'vaccine')) world.log.push({ week: world.week + 1, cls: 'ok', msg: state.vaccine ? 'The licensed vaccine has arrived. Vaccination campaigns are now available.' : 'An unproven vaccine batch has arrived (efficacy unknown). Run the Phase III trial in mode V to know what you are deploying.' });
   if (world.week === COMPASSIONATE_WEEK && !state.treatment) world.log.push({ week: world.week + 1, cls: 'ev', msg: 'Volvarin is available for compassionate use, but nobody knows whether it works. Run the trial in mode III.' });
   renderAll();
   if (over) { world.log.sort((a, b) => a.week - b.week); renderFeed(); await finish(); }
