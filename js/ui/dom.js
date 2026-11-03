@@ -58,5 +58,5 @@ export function defer(fn) { return new Promise(res => requestAnimationFrame(() =
 
 export function renderTeX(el, tex, display = false) {
   if (typeof katex === 'undefined') { el.textContent = tex; return; }
-  try { katex.render(tex, el, { displayMode: display, throwOnError: false }); } catch { el.textContent = tex; }
+  try { katex.render(tex, el, { displayMode: display, throwOnError: false, output: 'mathml' }); } catch { el.textContent = tex; }
 }
