@@ -109,7 +109,7 @@ export function clogit(sets, names) {
  * Weighted Cox regression for counting-process records
  *   { id, start, stop, event, w, x }   (at risk on (start, stop])
  * Breslow partial likelihood; robust variance from weighted score residuals
- * aggregated by subject (Lin & Wei 1989; Barlow 1994).
+ * aggregated by subject.
  */
 export function coxCountingProcess(records, names) {
   const p = records[0].x.length;

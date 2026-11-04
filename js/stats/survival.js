@@ -5,7 +5,7 @@
 //  • Log-rank (Mantel–Haenszel) test
 //  • Cox proportional hazards regression (Newton–Raphson, Breslow ties)
 //  • Harrell's concordance index
-//  • Schoenfeld (1983) sample size / power formula
+//  • Schoenfeld sample size / power formula
 //  • Trial simulator: Weibull PH survival, block randomisation, staggered accrual, dropout
 
 import { normCdf, normInv, chi2Sf } from './dist.js';
@@ -206,7 +206,7 @@ export function concordance(times, events, risk) {
   return usable ? conc / usable : NaN;
 }
 
-/** Schoenfeld (1983): events needed for a two-sided level-α log-rank test with given power. */
+/** Schoenfeld: events needed for a two-sided level-α log-rank test with given power. */
 export function schoenfeldEvents(hr, alpha = 0.05, power = 0.8, alloc = 0.5) {
   const z = normInv(1 - alpha / 2) + normInv(power);
   return (z * z) / (alloc * (1 - alloc) * Math.log(hr) ** 2);

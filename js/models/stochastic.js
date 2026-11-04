@@ -10,7 +10,7 @@ function emptyTraj() {
 }
 
 /**
- * Exact stochastic SEIRD via Gillespie's direct method (1977).
+ * Exact stochastic SEIRD via Gillespie's direct method.
  * Events: infection S→E (β S I / N), onset E→I (σ E), recovery I→R (γ(1−p) I), death I→D (γ p I).
  * Returns daily snapshots (counts).
  */
@@ -127,7 +127,7 @@ export function runEnsemble(o, rng, nRuns = 40, opts = {}) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Gravity-model mobility (Zipf 1946; Xia et al. 2004): flow_kj ∝ N_k N_j / d_kj².
+ * Gravity-model mobility: flow_kj ∝ N_k N_j / d_kj².
  * Returns a row-stochastic contact matrix C where C[k][j] is the fraction of
  * village k's contacts made with residents of village j.
  */
@@ -206,7 +206,7 @@ export function metapopStepDay(villages, state, p, rng, dt = 0.25) {
 }
 
 /**
- * Next-generation matrix for the metapopulation (Diekmann, Heesterbeek & Metz 1990):
+ * Next-generation matrix for the metapopulation:
  *   K_kj = (β b_k / γ) · C_kj · S_k / N_j
  * Its spectral radius is the (effective) reproduction number of the whole network.
  */

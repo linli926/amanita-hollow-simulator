@@ -28,7 +28,7 @@ export function makeRng(seed = Date.now()) {
 
   function exponential(rate = 1) { return -Math.log(uniform()) / rate; }
 
-  /** Gamma(shape, scale) — Marsaglia & Tsang (2000). */
+  /** Gamma(shape, scale) — Marsaglia & Tsang. */
   function gamma(shape, scale = 1) {
     if (shape < 1) return gamma(shape + 1, scale) * Math.pow(uniform(), 1 / shape);
     const d = shape - 1 / 3, c = 1 / Math.sqrt(9 * d);

@@ -1,4 +1,4 @@
-// Vaccine Lab, block 2 (Hackshaw): case study 6 — non-compliance and interim analyses.
+// Vaccine Lab, block 2: case study 6 — non-compliance and interim analyses.
 
 import { complianceTrial, caceBootstrap, sequentialTrials, boundary } from '../stats/trials.js';
 import { makeRng, randomSeed } from '../stats/rng.js';
@@ -38,8 +38,8 @@ export function renderConduct() {
     </div>
     <details class="methods" open><summary>▸ METHODS</summary><div class="method-grid">
       <div><h4>Analysis populations</h4><p><em>ITT</em>: everyone as randomised. It estimates the effect of <em>offering</em> the vaccine, and randomisation protects it. <em>Per-protocol</em>: drops vaccine-arm participants who were not vaccinated. <em>As-treated</em>: compares by vaccine actually received. Both break randomisation.</p></div>
-      <div><h4>Complier average causal effect</h4><div class="tex" data-tex="r^{C}_{0}=\\frac{r_{\\text{placebo}}-(1-c)\\,r_{\\text{never}}}{c},\\quad \\text{VE}_{\\text{CACE}}=1-\\frac{r^{C}_{1}}{r^{C}_{0}}" data-display="1"></div><p>c = proportion vaccinated in the vaccine arm. Randomisation is used as an instrument: never-takers are identified in the vaccine arm and subtracted from the placebo arm. 95% CI by bootstrap (200 resamples).</p><p class="cite">Angrist, Imbens &amp; Rubin (1996)</p></div>
-      <div><h4>Group-sequential boundaries</h4><div class="tex" data-tex="\\text{Pocock: } |z_k|\\ge C_P \\qquad \\text{O'Brien–Fleming: } |z_k|\\ge C_B\\sqrt{K/k}" data-display="1"></div><p>Constants keep the overall two-sided α at 5% (K = 5: C<sub>P</sub> = 2.413, C<sub>B</sub> = 2.040). O'Brien–Fleming is very strict early and close to 1.96 at the final look.</p><p class="cite">Pocock (1977); O'Brien &amp; Fleming (1979)</p></div>
+      <div><h4>Complier average causal effect</h4><div class="tex" data-tex="r^{C}_{0}=\\frac{r_{\\text{placebo}}-(1-c)\\,r_{\\text{never}}}{c},\\quad \\text{VE}_{\\text{CACE}}=1-\\frac{r^{C}_{1}}{r^{C}_{0}}" data-display="1"></div><p>c = proportion vaccinated in the vaccine arm. Randomisation is used as an instrument: never-takers are identified in the vaccine arm and subtracted from the placebo arm. 95% CI by bootstrap (200 resamples).</p></div>
+      <div><h4>Group-sequential boundaries</h4><div class="tex" data-tex="\\text{Pocock: } |z_k|\\ge C_P \\qquad \\text{O'Brien–Fleming: } |z_k|\\ge C_B\\sqrt{K/k}" data-display="1"></div><p>Constants keep the overall two-sided α at 5% (K = 5: C<sub>P</sub> = 2.413, C<sub>B</sub> = 2.040). O'Brien–Fleming is very strict early and close to 1.96 at the final look.</p></div>
     </div></details>`));
   results.c6seed ??= randomSeed();
   bind('l6-n', 'nArm6', fmt.int, () => {});
@@ -72,7 +72,7 @@ async function runCompliance() {
   ], V.ve6, { min: 0 });
   html('l6-forest-cap', `${pct(R.compliance, 1)} of the vaccine arm was vaccinated. Infection risk: ${pct(R.riskRefusers, 1)} among those who skipped it vs ${pct(R.riskControl, 1)} in the placebo arm.`);
   const p = [];
-  p.push(`<em>ITT</em> estimates ${pct(R.itt.est, 1)}. It is diluted towards zero because ${pct(1 - R.compliance, 0)} of the vaccine arm was never vaccinated. That is still the right answer to "what happens if we offer this vaccine?", and it is protected by randomisation. Regulators use ITT as the primary analysis for superiority trials.`);
+  p.push(`<em>ITT</em> estimates ${pct(R.itt.est, 1)}. It is diluted towards zero because ${pct(1 - R.compliance, 0)} of the vaccine arm was never vaccinated. That is still the right answer to "what happens if we offer this vaccine?", and it is protected by randomisation. `);
   p.push(V.refusalOR > 1.2
     ? `<em>Per-protocol</em> (${pct(R.pp.est, 1)}) and <em>as-treated</em> (${pct(R.at.est, 1)}) <em>overstate</em> efficacy. Those who skipped the vaccine were frailer and less cautious, so removing them leaves a healthier vaccine group, but nobody is removed from the placebo arm. This is the healthy-adherer bias: non-compliance is not random.`
     : `With refusal unrelated to risk, per-protocol (${pct(R.pp.est, 1)}) and as-treated (${pct(R.at.est, 1)}) happen to be close to the truth. In practice this cannot be verified, so neither can be trusted by default.`);

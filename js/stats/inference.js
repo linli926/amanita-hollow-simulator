@@ -2,7 +2,7 @@
 //  • Maximum likelihood fit of a SEIR model to negative-binomial case counts (Nelder–Mead)
 //  • Profile likelihood confidence interval for R₀ (Wilks' theorem)
 //  • Poisson GLM growth-rate estimate via IRLS, with quasi-Poisson overdispersion
-//  • Instantaneous reproduction number Rt (Cori et al. 2013)
+//  • Instantaneous reproduction number Rt
 
 import { simulateSEIRD } from '../models/ode.js';
 import { R0FromGrowthRate, growthRateFromR0 } from '../models/theory.js';
@@ -162,7 +162,7 @@ export function guessLogLik(y, known, R0, rho, k) {
 
 /**
  * Exponential growth rate from a Poisson log-linear GLM, log E[y_t] = a + r t,
- * fitted by iteratively reweighted least squares (Nelder & Wedderburn 1972).
+ * fitted by iteratively reweighted least squares.
  * Standard errors are inflated by the Pearson dispersion (quasi-Poisson).
  * Fits days [from, to]; by default from the first case to the peak of the 7-day mean.
  */
@@ -219,7 +219,7 @@ export function R0FromGLM(glm, L, D) {
 }
 
 /**
- * Instantaneous reproduction number Rt (Cori, Ferguson, Fraser & Cauchemez 2013).
+ * Instantaneous reproduction number Rt.
  * Renewal equation: E[I_t] = R_t Λ_t, Λ_t = Σ_s I_{t−s} w_s.
  * With a Gamma(a, b) prior and a sliding window of τ days, the posterior is
  *   Gamma( a + Σ I_s , 1 / (1/b + Σ Λ_s) ).

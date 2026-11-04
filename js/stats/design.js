@@ -84,7 +84,7 @@ export function toVE(m) {
 }
 
 /**
- * Mantel–Haenszel pooled risk ratio across strata, with the Greenland–Robins (1985)
+ * Mantel–Haenszel pooled risk ratio across strata, with the Greenland–Robins
  * variance of log RR_MH. strata: array of {a, b, c, d}.
  */
 export function mantelHaenszelRR(strata) {

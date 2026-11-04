@@ -4,7 +4,7 @@
 export function herdImmunityThreshold(R0) { return R0 > 1 ? 1 - 1 / R0 : 0; }
 
 /**
- * Final-size equation (Kermack & McKendrick 1927) for an SIR-type epidemic with
+ * Final-size equation for an SIR-type epidemic with
  * a fraction s0 initially susceptible:   z = s0 · (1 − e^{−R₀ z})
  * z is the fraction of the whole population infected during the epidemic.
  * Solved with Newton's method. Holds for SEIR / any latent period distribution.
@@ -25,7 +25,7 @@ export function finalSize(R0, s0 = 1) {
 /**
  * Exponential growth rate r of an SEIR epidemic with exponential latent (L) and
  * infectious (D) periods, from the Euler–Lotka equation:
- *   R₀ = (1 + r L)(1 + r D)      (Wallinga & Lipsitch 2007)
+ *   R₀ = (1 + r L)(1 + r D)
  */
 export function growthRateFromR0(R0, L, D) {
   if (L <= 0) return (R0 - 1) / D;

@@ -132,11 +132,11 @@
         <div><h4>SEIRD compartmental model</h4><div class="tex" data-tex="\begin{aligned}\dot S&=-\beta SI/N\\ \dot E&=\beta SI/N-\sigma E\\ \dot I&=\sigma E-\gamma I\\ \dot R&=\gamma(1-p)I,\;\; \dot D=\gamma p I\end{aligned}" data-display="1"></div>
           <p>β = R₀γ, σ = 1/latent, γ = 1/infectious, p = CFR. Integrated with classical 4th-order Runge–Kutta (dt = 0.1 d).</p></div>
         <div><h4>Final size &amp; herd immunity</h4><div class="tex" data-tex="z = s_0\left(1-e^{-R_0 z}\right),\qquad \text{HIT}=1-\tfrac{1}{R_0}" data-display="1"></div>
-          <p>Solved by Newton's method. Holds for any latent-period distribution.</p><p class="cite">Kermack &amp; McKendrick (1927)</p></div>
+          <p>Solved by Newton's method. Holds for any latent-period distribution.</p></div>
         <div><h4>Growth rate (Euler–Lotka)</h4><div class="tex" data-tex="R_0=(1+rL)(1+rD)" data-display="1"></div>
-          <p>Links the early exponential growth rate r to R₀ for exponentially distributed latent (L) and infectious (D) periods.</p><p class="cite">Wallinga &amp; Lipsitch (2007)</p></div>
+          <p>Links the early exponential growth rate r to R₀ for exponentially distributed latent (L) and infectious (D) periods.</p></div>
         <div><h4>Gillespie stochastic simulation</h4><div class="tex" data-tex="\tau\sim\text{Exp}(a_0),\; a_0=\textstyle\sum_j a_j(x)" data-display="1"></div>
-          <p>Exact simulation of the continuous-time Markov chain. For N &gt; 8,000 a binomial tau-leap (dt = 0.25 d) is used instead.</p><p class="cite">Gillespie (1977)</p></div>
+          <p>Exact simulation of the continuous-time Markov chain. For N &gt; 8,000 a binomial tau-leap (dt = 0.25 d) is used instead.</p></div>
         <div><h4>Probability of a major outbreak</h4><div class="tex" data-tex="P(\text{major}) = 1-\left(1/R_{\text{eff}}\right)^{I_0}" data-display="1"></div>
           <p>Branching-process approximation: each early case's offspring are geometric with mean R. Compare it with the ensemble's bimodal final-size histogram.</p></div>
       </div>
@@ -225,15 +225,15 @@
         <div><h4>Observation model</h4><div class="tex" data-tex="y_t \sim \text{NegBin}\!\left(\rho\,\iota_t(R_0, I_0),\,k\right)" data-display="1"></div>
           <p>ι<sub>t</sub> = daily new infections from the SEIR ODE. Variance μ + μ²/k allows over-dispersion. The truth is one stochastic (Gillespie / tau-leap) realisation.</p></div>
         <div><h4>Maximum likelihood</h4><div class="tex" data-tex="\hat\theta=\arg\max_\theta \textstyle\sum_t \log f(y_t\mid\theta)" data-display="1"></div>
-          <p>θ = (log R₀, logit ρ, log I₀, log k), optimised with the Nelder–Mead simplex from several starts.</p><p class="cite">Nelder &amp; Mead (1965)</p></div>
+          <p>θ = (log R₀, logit ρ, log I₀, log k), optimised with the Nelder–Mead simplex from several starts.</p></div>
         <div><h4>Profile likelihood CI</h4><div class="tex" data-tex="\{R_0: 2[\ell(\hat\theta)-\ell_p(R_0)]\le\chi^2_{1,0.95}=3.84\}" data-display="1"></div>
-          <p>Nuisance parameters are re-optimised at each R₀. The forecast envelope spans the trajectories of all R₀ inside the interval.</p><p class="cite">Wilks (1938)</p></div>
+          <p>Nuisance parameters are re-optimised at each R₀. The forecast envelope spans the trajectories of all R₀ inside the interval.</p></div>
         <div><h4>Misspecification adjustment</h4><div class="tex" data-tex="\hat c=\max\!\Big(1,\;\hat\phi\,\frac{1+\hat r_1}{1-\hat r_1}\Big)" data-display="1"></div>
           <p>The truth is a <em>stochastic</em> epidemic, so its residuals around the ODE mean are over-dispersed (φ̂) and serially correlated (r̂₁). Scaling the cut-off by ĉ (quasi-likelihood) raised empirical coverage of the nominal 95% interval from ≈70% to ≈90% in a 120-outbreak simulation study.</p></div>
         <div><h4>Growth-rate regression</h4><div class="tex" data-tex="\log \mathbb E[y_t]=a+rt" data-display="1"></div>
           <p>Poisson GLM fitted by iteratively reweighted least squares; quasi-Poisson SE. Converted with R₀ = (1+rL)(1+rD).</p></div>
         <div><h4>Instantaneous reproduction number</h4><div class="tex" data-tex="R_t\mid y\sim\Gamma\!\left(a+\!\!\sum_{s\in W}\! y_s,\;\Big(\tfrac1b+\!\!\sum_{s\in W}\!\Lambda_s\Big)^{-1}\right)" data-display="1"></div>
-          <p>Λ<sub>s</sub> = Σ y<sub>s−u</sub>w<sub>u</sub> with the SEIR generation interval w (hypo-exponential). Window 7 days.</p><p class="cite">Cori et al. (2013)</p></div>
+          <p>Λ<sub>s</sub> = Σ y<sub>s−u</sub>w<sub>u</sub> with the SEIR generation interval w (hypo-exponential). Window 7 days.</p></div>
       </div>
     </details>
   </section>
@@ -343,13 +343,13 @@
         <div><h4>Data-generating model</h4><div class="tex" data-tex="H(t\mid x)=\left(t/\lambda\right)^{k} e^{\beta_1 \text{trt}+\beta_2 \frac{\text{age}-55}{10}+\beta_3\text{comorb}}" data-display="1"></div>
           <p>Weibull proportional hazards; staggered uniform accrual; administrative + exponential dropout censoring. The baseline hazard is calibrated by bisection so that the <em>average</em> placebo-arm 60-day mortality over the patient mix (age, comorbidity) equals the setting. By default that setting is derived from your pathogen: 60-day mortality ≈ 0.9 × CFR ÷ 10% hospitalised.</p></div>
         <div><h4>Kaplan–Meier &amp; Greenwood</h4><div class="tex" data-tex="\hat S(t)=\prod_{t_i\le t}\Big(1-\frac{d_i}{n_i}\Big),\;\; \widehat{\text{Var}}=\hat S^2\sum\frac{d_i}{n_i(n_i-d_i)}" data-display="1"></div>
-          <p>CIs on the log(−log) scale. Median CI from where the band crosses 0.5 (Brookmeyer–Crowley).</p><p class="cite">Kaplan &amp; Meier (1958); Greenwood (1926)</p></div>
+          <p>CIs on the log(−log) scale. Median CI from where the band crosses 0.5 (Brookmeyer–Crowley).</p></div>
         <div><h4>Log-rank test</h4><div class="tex" data-tex="\chi^2=\frac{\big(\sum_i O_{1i}-E_{1i}\big)^2}{\sum_i \frac{d_i n_{0i} n_{1i}(n_i-d_i)}{n_i^2(n_i-1)}}" data-display="1"></div>
-          <p class="cite">Mantel (1966); Peto &amp; Peto (1972)</p></div>
+          </div>
         <div><h4>Cox proportional hazards</h4><div class="tex" data-tex="L(\beta)=\prod_{i:\delta_i=1}\frac{e^{x_i^\top\beta}}{\sum_{j\in\mathcal R(t_i)}e^{x_j^\top\beta}}" data-display="1"></div>
-          <p>Breslow ties; Newton–Raphson with step-halving; Wald CIs; likelihood-ratio test; Harrell's C-index.</p><p class="cite">Cox (1972); Harrell et al. (1982)</p></div>
+          <p>Breslow ties; Newton–Raphson with step-halving; Wald CIs; likelihood-ratio test; Harrell's C-index.</p></div>
         <div><h4>Sample size</h4><div class="tex" data-tex="D=\frac{(z_{1-\alpha/2}+z_{1-\beta})^2}{\pi(1-\pi)\,(\log \text{HR})^2}" data-display="1"></div>
-          <p>Number of deaths needed; checked against Monte Carlo power from repeated simulated trials.</p><p class="cite">Schoenfeld (1983)</p></div>
+          <p>Number of deaths needed; checked against Monte Carlo power from repeated simulated trials.</p></div>
       </div>
     </details>
   </section>
@@ -410,9 +410,9 @@
         <div><h4>Coupled SEIRD villages</h4><div class="tex" data-tex="\lambda_k(t)=\beta\, b_k(t)\sum_j C_{kj}\frac{I_j}{N_j}" data-display="1"></div>
           <p>Each village is a stochastic SEIRD (binomial tau-leap, dt = 0.25 d). b<sub>k</sub> = your interventions × events. C = row-stochastic mixing.</p></div>
         <div><h4>Gravity-model mobility</h4><div class="tex" data-tex="C_{kj}\propto m\,\frac{N_k N_j}{d_{kj}^2}\;(j\neq k),\quad C_{kk}=1-m" data-display="1"></div>
-          <p>Travel bans cut a village's outside mixing by 85%.</p><p class="cite">Zipf (1946); Xia, Bjørnstad &amp; Grenfell (2004)</p></div>
+          <p>Travel bans cut a village's outside mixing by 85%.</p></div>
         <div><h4>Next-generation matrix</h4><div class="tex" data-tex="K_{kj}=\frac{\beta b_k}{\gamma}C_{kj}\frac{S_k}{N_j},\qquad R_t=\rho(K)" data-display="1"></div>
-          <p>The true network Rₜ is the spectral radius of K (power iteration), shown in the after-action report against your Cori estimate.</p><p class="cite">Diekmann, Heesterbeek &amp; Metz (1990)</p></div>
+          <p>The true network Rₜ is the spectral radius of K (power iteration), shown in the after-action report against your Cori estimate.</p></div>
         <div><h4>Counterfactual</h4><p>At the end, 30 replicate epidemics with identical hidden parameters, seeding and events but <em>no</em> interventions give the deaths you were up against. Your grade is your deaths relative to that median.</p></div>
       </div>
     </details>

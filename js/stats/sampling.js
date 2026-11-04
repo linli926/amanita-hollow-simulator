@@ -1,4 +1,4 @@
-// Sampling designs within a cohort ("study base") — Reilly, Controlled Epidemiological Studies.
+// Sampling designs within a cohort ("study base").
 //  • Cohort with time-to-infection (Weibull-free exponential hazards)
 //  • Nested case–control by risk-set (incidence-density) sampling
 //  • Case–cohort with a random subcohort and Barlow weights
@@ -81,7 +81,7 @@ export function caseCohort(people, alpha, rng) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Secondary-outcome reuse (Reilly et al. 2005).
+ * Secondary-outcome reuse.
  * X = vaccinated, Y = secondary outcome (e.g. raised liver enzymes), D = primary disease
  * (hospitalised Amanita infection). The case–control sample was drawn on D; we want OR(X→Y)
  * in the population.

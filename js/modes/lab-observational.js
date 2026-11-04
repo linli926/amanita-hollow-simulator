@@ -1,4 +1,4 @@
-// Vaccine Lab, block 1 (Reilly): case studies 3 and 4.
+// Vaccine Lab, block 1: case studies 3 and 4.
 //  3 · Sampling the study base — nested case–control vs case–cohort vs full cohort
 //  4 · Reusing case–control data for a secondary outcome
 
@@ -39,8 +39,8 @@ export function renderSampling() {
     </div>
     <details class="methods" open><summary>▸ METHODS</summary><div class="method-grid">
       <div><h4>Full cohort</h4><div class="tex" data-tex="h(t\\mid x)=h_0(t)\\,e^{\\beta_1\\text{vax}+\\beta_2\\text{age}}" data-display="1"></div><p>Cox proportional hazards with Breslow partial likelihood. VE = 1 − HR.</p></div>
-      <div><h4>Nested case–control</h4><div class="tex" data-tex="L(\\beta)=\\prod_{\\text{cases }i}\\frac{e^{x_i^\\top\\beta}}{\\sum_{j\\in\\tilde{\\mathcal R}_i}e^{x_j^\\top\\beta}}" data-display="1"></div><p>R̃ᵢ = the case plus its m sampled controls. Conditional logistic regression (a Cox model stratified by matched set) estimates the hazard ratio directly, with no rare-disease assumption. A control may later become a case.</p><p class="cite">Thomas (1977); Langholz &amp; Goldstein (1996)</p></div>
-      <div><h4>Case–cohort</h4><div class="tex" data-tex="w_i=\\begin{cases}1/\\alpha & \\text{subcohort, before event}\\\\ 1 & \\text{case, at its event time}\\end{cases}" data-display="1"></div><p>Weighted Cox model on (start, stop] records with Barlow weights. The weighting breaks the usual information-matrix variance, so the robust (Lin–Wei sandwich) SE is required. The same subcohort serves as the comparison group for any outcome.</p><p class="cite">Prentice (1986); Barlow (1994)</p></div>
+      <div><h4>Nested case–control</h4><div class="tex" data-tex="L(\\beta)=\\prod_{\\text{cases }i}\\frac{e^{x_i^\\top\\beta}}{\\sum_{j\\in\\tilde{\\mathcal R}_i}e^{x_j^\\top\\beta}}" data-display="1"></div><p>R̃ᵢ = the case plus its m sampled controls. Conditional logistic regression (a Cox model stratified by matched set) estimates the hazard ratio directly, with no rare-disease assumption. A control may later become a case.</p></div>
+      <div><h4>Case–cohort</h4><div class="tex" data-tex="w_i=\\begin{cases}1/\\alpha & \\text{subcohort, before event}\\\\ 1 & \\text{case, at its event time}\\end{cases}" data-display="1"></div><p>Weighted Cox model on (start, stop] records with Barlow weights. The weighting breaks the usual information-matrix variance, so the robust (Lin–Wei sandwich) SE is required. The same subcohort serves as the comparison group for any outcome.</p></div>
     </div></details>`));
   results.s3seed ??= randomSeed();
   let t = 0;
@@ -165,7 +165,7 @@ export function renderReuse() {
     <details class="methods" open><summary>▸ METHODS</summary><div class="method-grid">
       <div><h4>Why naive analysis fails</h4><p>Sampling depends on hospitalisation, which depends on both the exposure (vaccine) and the secondary outcome (enzymes). Selecting on a common effect induces an association between them. This is selection bias (collider bias). It vanishes only if the secondary outcome is unrelated to the primary outcome.</p></div>
       <div><h4>Inverse-probability weighting</h4><div class="tex" data-tex="w_i=\\frac{1}{P(\\text{sampled}\\mid D_i)}=\\begin{cases}1 & \\text{case}\\\\ N_{\\bar D}/n_{\\bar D} & \\text{control}\\end{cases}" data-display="1"></div><p>Weighted logistic regression of Y on X reconstructs the population association. Sandwich (robust) standard errors account for the weights.</p></div>
-      <div><h4>Controls only</h4><p>Controls represent the non-diseased population, which is close to the whole population when the primary disease is rare. The approximation degrades as prevalence rises. Discarding the cases also wastes information.</p><p class="cite">Reilly et al. (2005), <i>Statistics in Medicine</i>; Jiang, Scott &amp; Wild (2006)</p></div>
+      <div><h4>Controls only</h4><p>Controls represent the non-diseased population, which is close to the whole population when the primary disease is rare. The approximation degrades as prevalence rises. Discarding the cases also wastes information.</p></div>
     </div></details>`));
   results.r4seed ??= randomSeed();
   let t = 0;

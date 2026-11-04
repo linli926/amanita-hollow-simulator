@@ -1,7 +1,7 @@
 // Numerical optimisation and small linear-algebra helpers.
 
 /**
- * Nelder–Mead downhill simplex minimiser (Nelder & Mead, 1965).
+ * Nelder–Mead downhill simplex minimiser.
  * Standard coefficients: reflection 1, expansion 2, contraction 0.5, shrink 0.5.
  * @param {(x:number[])=>number} f  objective to minimise
  * @param {number[]} x0              starting point

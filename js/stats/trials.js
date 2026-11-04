@@ -1,4 +1,4 @@
-// Trial conduct — Hackshaw, A Concise Guide to Clinical Trials.
+// Trial conduct.
 //  • Non-compliance: ITT, per-protocol, as-treated and the complier average causal effect (CACE)
 //  • Group-sequential monitoring: naive repeated testing vs Pocock vs O'Brien–Fleming boundaries
 
@@ -73,7 +73,7 @@ export function caceBootstrap(rows, rng, B = 200) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Two-sided α = 0.05 boundary constants (Jennison & Turnbull 2000, Table 2.1/2.3). */
+/** Two-sided α = 0.05 boundary constants (standard tabulated values). */
 const POCOCK = { 1: 1.960, 2: 2.178, 3: 2.289, 4: 2.361, 5: 2.413 };
 const OBF = { 1: 1.960, 2: 1.977, 3: 2.004, 4: 2.024, 5: 2.040 };
 

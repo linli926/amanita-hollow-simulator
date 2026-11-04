@@ -22,7 +22,7 @@ let hidden = null; // Phase III truth
 
 export function initLab(ctx) {
   toast = ctx.toast;
-  html('l-nav', BLOCKS.map(b => `<div class="study-block">${b.title}<span>${b.ref}</span></div>` +
+  html('l-nav', BLOCKS.map(b => `<div class="study-block">${b.title}${b.ref ? `<span>${b.ref}</span>` : ''}</div>` +
     STUDIES.filter(s => s.block === b.id).map(s => `<button class="study-link${s.id === current ? ' on' : ''}" data-study="${s.id}"><span class="num">${s.num}</span><span>${s.short}</span></button>`).join('')).join(''));
   $$('#l-nav [data-study]').forEach(b => b.addEventListener('click', () => { current = b.dataset.study; render(); window.scrollTo({ top: 0 }); }));
 }
@@ -72,7 +72,7 @@ function renderConfounding() {
     </div>
     <details class="methods" open><summary>▸ METHODS</summary><div class="method-grid">
       <div><h4>Effect measure</h4><div class="tex" data-tex="\\text{VE}=1-\\text{RR},\\quad \\text{RR}=\\frac{a/(a+b)}{c/(c+d)}" data-display="1"></div><p>95% CI from the log-RR Wald interval, transformed to the VE scale.</p></div>
-      <div><h4>Mantel–Haenszel stratified RR</h4><div class="tex" data-tex="\\widehat{\\text{RR}}_{MH}=\\frac{\\sum_k a_k n_{0k}/N_k}{\\sum_k c_k n_{1k}/N_k}" data-display="1"></div><p>Weighted average of stratum-specific RRs. Variance by Greenland &amp; Robins (1985).</p></div>
+      <div><h4>Mantel–Haenszel stratified RR</h4><div class="tex" data-tex="\\widehat{\\text{RR}}_{MH}=\\frac{\\sum_k a_k n_{0k}/N_k}{\\sum_k c_k n_{1k}/N_k}" data-display="1"></div><p>Weighted average of stratum-specific RRs, with the Greenland–Robins variance.</p></div>
       <div><h4>Data-generating model</h4><p>Season risk 6% / 10% / 18% by age band; cautious residents have 40% of the exposure. Uptake: logit P(vax) = logit 0.4 + log(OR<sub>age</sub>)·(band−1) + log(OR<sub>caution</sub>)·(caution−0.4).</p></div>
     </div></details>`));
   const rerun = () => { results.c1 = runConfoundingStudy({ n: V.n1, ve: V.ve1, orAge: V.orAge, orCaution: V.orCaution }, makeRng(results.c1seed)); drawConfounding(); };
@@ -193,7 +193,7 @@ function renderCaseControl() {
   html('l-article', article(s, `
     <div class="study-grid">
       <div><h3>Question</h3><p>Following 40,000 residents for a whole season is expensive. Can we estimate vaccine efficacy by sampling only some of them, and what happens when we rely on cases that happen to be tested at a clinic?</p></div>
-      <div><h3>Design</h3><p>A full cohort is simulated as a benchmark. From it, a <em>case–control study</em> samples all cases plus <em>m</em> controls per case from non-cases, and adjusts for age band with <em>logistic regression</em>. A <em>test-negative design</em> uses everyone tested for a febrile illness: those positive for Amanita are cases and those negative (another "valley fever") are controls. This is how influenza and COVID-19 vaccine effectiveness are monitored in practice.</p></div>
+      <div><h3>Design</h3><p>A full cohort is simulated as a benchmark. From it, a <em>case–control study</em> samples all cases plus <em>m</em> controls per case from non-cases, and adjusts for age band with <em>logistic regression</em>. A <em>test-negative design</em> uses everyone tested for a febrile illness: those positive for Amanita are cases and those negative (another "valley fever") are controls. </p></div>
     </div>
     <div class="grid-2">
       ${chartPanel('l2-forest', 'Estimated efficacy by design', 'point estimate with 95% CI · dashed = truth')}
@@ -205,9 +205,9 @@ function renderCaseControl() {
     </div>
     <details class="methods" open><summary>▸ METHODS</summary><div class="method-grid">
       <div><h4>Odds ratio and Woolf CI</h4><div class="tex" data-tex="\\widehat{\\text{OR}}=\\frac{ad}{bc},\\quad \\text{SE}(\\log\\widehat{\\text{OR}})=\\sqrt{\\tfrac1a+\\tfrac1b+\\tfrac1c+\\tfrac1d}" data-display="1"></div><p>VE = 1 − OR. With controls sampled from non-cases at the end of follow-up (cumulative sampling), OR ≈ RR only when the outcome is rare.</p></div>
-      <div><h4>Logistic regression in a case–control sample</h4><div class="tex" data-tex="\\operatorname{logit}P(\\text{case}\\mid x)=\\alpha^*+\\beta\\,\\text{vax}+\\gamma_1[40\\text{–}64]+\\gamma_2[65+]" data-display="1"></div><p>Sampling on case status only shifts the intercept (α* = α + log of the sampling-fraction ratio), so e<sup>β</sup> is a valid adjusted odds ratio. Fitted by IRLS.</p><p class="cite">Prentice &amp; Pyke (1979)</p></div>
+      <div><h4>Logistic regression in a case–control sample</h4><div class="tex" data-tex="\\operatorname{logit}P(\\text{case}\\mid x)=\\alpha^*+\\beta\\,\\text{vax}+\\gamma_1[40\\text{–}64]+\\gamma_2[65+]" data-display="1"></div><p>Sampling on case status only shifts the intercept (α* = α + log of the sampling-fraction ratio), so e<sup>β</sup> is a valid adjusted odds ratio. Fitted by IRLS.</p></div>
       <div><h4>Why OR drifts from RR</h4><div class="tex" data-tex="\\text{OR}=\\text{RR}\\cdot\\frac{1-r_0}{1-r_1}" data-display="1"></div><p>With a protective vaccine (r₁ &lt; r₀) the OR is further from 1 than the RR, so VE from the OR overstates efficacy when attack rates are high.</p></div>
-      <div><h4>Test-negative design</h4><div class="tex" data-tex="\\text{VE}_{TND}=1-\\frac{\\text{odds}(\\text{vax}\\mid\\text{test}+)}{\\text{odds}(\\text{vax}\\mid\\text{test}-)}" data-display="1"></div><p>Health-care seeking affects who is tested equally for cases and controls, so it cancels. Valid if the vaccine does not change the risk of the control illness.</p><p class="cite">Jackson &amp; Nelson (2013); Sullivan, Tchetgen Tchetgen &amp; Cowling (2016)</p></div>
+      <div><h4>Test-negative design</h4><div class="tex" data-tex="\\text{VE}_{TND}=1-\\frac{\\text{odds}(\\text{vax}\\mid\\text{test}+)}{\\text{odds}(\\text{vax}\\mid\\text{test}-)}" data-display="1"></div><p>Health-care seeking affects who is tested equally for cases and controls, so it cancels. Valid if the vaccine does not change the risk of the control illness.</p></div>
     </div></details>`));
   results.c2seed ??= randomSeed();
   const rerun = () => { results.c2 = runCaseControlStudy({ n: V.n2, ve: V.ve2, attackScale: V.attack, controlsPerCase: V.m, seekOR: V.seekOR, veOther: V.veOther, otherIllness: 0.15, orAge: V.orAge2 }, makeRng(results.c2seed)); drawCaseControl(); };
@@ -281,7 +281,7 @@ function drawCaseControl() {
   if (V.seekOR > 1.2) parts.push(`Counting only clinic-confirmed cases gives <em>${pct(ve('survAdj'), 1)}</em>, even after adjusting for age. Vaccinated residents are more often health-seekers and so more often tested, which makes them appear to have <em>more</em> disease. This is <em>detection bias</em>.`);
   parts.push(V.veOther > 0.02
     ? `The test-negative estimate (<em>${pct(ve('tndAdj'), 1)}</em>) is biased downward here. Because the vaccine also prevents some "valley fever", vaccinated people are under-represented among test-negative controls. This breaks the design's key assumption.`
-    : `The age-adjusted test-negative design estimates <em>${pct(ve('tndAdj'), 1)}</em>. Health-seeking drives testing equally in cases and controls, so the bias cancels out of the odds ratio. That is why public-health agencies favour this design for routine vaccine monitoring.`);
+    : `The age-adjusted test-negative design estimates <em>${pct(ve('tndAdj'), 1)}</em>. Health-seeking drives testing equally in cases and controls, so the bias cancels out of the odds ratio. `);
   html('l2-interp', parts.map(p => `<p>${p}</p>`).join(''));
 }
 
@@ -312,7 +312,7 @@ function renderRandomisation() {
     </div>
     <details class="methods" open><summary>▸ METHODS</summary><div class="method-grid">
       <div><h4>Two proportions (VE &gt; 0)</h4><div class="tex" data-tex="n=\\frac{\\left(z_{1-\\alpha/2}\\sqrt{2\\bar p\\bar q}+z_{1-\\beta}\\sqrt{p_0q_0+p_1q_1}\\right)^2}{(p_0-p_1)^2}" data-display="1"></div><p>Per arm, two-sided α = 0.05, p₁ = p₀(1 − VE).</p></div>
-      <div><h4>Licensure criterion (lower bound &gt; 30%)</h4><div class="tex" data-tex="n=\\frac{(z_{0.975}+z_{1-\\beta})^2\\left(\\frac{q_1}{p_1}+\\frac{q_0}{p_0}\\right)}{\\left(\\log 0.7-\\log(1-\\text{VE})\\right)^2}" data-display="1"></div><p>Tests H₀: VE ≤ 30% on the log-RR scale. Mirrors the FDA (2020) and WHO guidance for pandemic vaccines: point estimate ≥ 50% and lower 95% bound &gt; 30%.</p></div>
+      <div><h4>Licensure criterion (lower bound &gt; 30%)</h4><div class="tex" data-tex="n=\\frac{(z_{0.975}+z_{1-\\beta})^2\\left(\\frac{q_1}{p_1}+\\frac{q_0}{p_0}\\right)}{\\left(\\log 0.7-\\log(1-\\text{VE})\\right)^2}" data-display="1"></div><p>Tests H₀: VE ≤ 30% on the log-RR scale. The licensing criterion used here: point estimate ≥ 50% and lower 95% bound &gt; 30%.</p></div>
       <div><h4>Why block and stratify</h4><p>Permuted blocks cap the arm-size difference at half a block at any point in enrolment. Stratifying the blocks by a strong prognostic factor also balances that factor. This matters most in small trials. Large trials balance well by chance.</p></div>
     </div></details>`));
   bind('l3-n', 'nRand', v => v, () => { results.rand = null; drawRandomisation(); });
@@ -463,7 +463,7 @@ function renderPhase3() {
     <details class="methods"><summary>▸ METHODS</summary><div class="method-grid">
       <div><h4>Attack rate from the epidemic</h4><div class="tex" data-tex="r_0=\\phi\\cdot\\frac{1}{|T|}\\sum_{t\\in T}\\frac{C(t+42)-C(t)}{S(t)}" data-display="1"></div><p>C = cumulative infections and S = susceptibles from the SEIRD model of your outbreak; T = enrolment days; φ = ${pct(TRIAL_TIMELINE.endpointFraction)} of infections cause the endpoint illness. Previously infected residents are screened out.</p></div>
       <div><h4>Primary analysis</h4><div class="tex" data-tex="\\widehat{\\text{VE}}=1-\\frac{a/n_1}{c/n_0},\\quad \\text{CI from }\\log\\widehat{\\text{RR}}\\pm 1.96\\,\\text{SE}" data-display="1"></div><p>Intention-to-treat, Pearson χ² test, and an age-stratified Mantel–Haenszel estimate as a sensitivity analysis.</p></div>
-      <div><h4>Reporting</h4><p>Participant flow follows the CONSORT 2010 statement: screening, exclusions with reasons, allocation, receipt of the intervention, losses to follow-up and the analysed population per arm.</p><p class="cite">Schulz, Altman &amp; Moher (2010)</p></div>
+      <div><h4>Reporting</h4><p>Participant flow follows the CONSORT format: screening, exclusions with reasons, allocation, receipt of the intervention, losses to follow-up and the analysed population per arm.</p></div>
       <div><h4>Link to Outbreak Response</h4><p>Only a licensed vaccine reaches the villagers, from the week of the licensing decision, with its true efficacy. A failed or late trial leaves the valley without a vaccine.</p></div>
     </div></details>`));
   const refresh = () => {
@@ -514,7 +514,7 @@ function drawTrialEpidemic(E) {
       <tr><td>Vaccine reaches villagers if licensed</td><td class="r" style="color:${E.approvalWeek <= 20 ? 'var(--green-bright)' : 'var(--red-bright)'}">week ${E.approvalWeek}${E.approvalWeek > 20 ? ' · after the 20-week response campaign ends' : ''}</td></tr>
     </table>
     <div class="interp" style="margin-top:8px"><p>${V.trialStart + E.enrolDays > (tr.I.indexOf(Math.max(...tr.I)) + 14) && E.attack < 0.02
-      ? 'The trial starts after the epidemic has peaked, so few participants are exposed and few endpoints occur. This is the real-world problem that hit the Ebola and Zika vaccine trials: by the time a trial is ready, transmission may be fading.'
+      ? 'The trial starts after the epidemic has peaked, so few participants are exposed and few endpoints occur. By the time a trial is ready, transmission may already be fading.'
       : 'Transmission is still intense during follow-up, so endpoints accrue quickly and a modest trial can answer the question. Starting later means fewer cases but more time for development.'}</p></div>`);
   html('l4-plan', `Sample size for the licence criterion with this attack rate (${pct(E.attack, 2)}), expected VE ${pct(V.veExp)} and power ${pct(V.power)} (assumptions from the sample-size case study): <em>${isFinite(plan) ? fmt.int(plan) : '∞'} per arm</em>. ` +
     (feasible ? `<button class="link-btn" id="l4-use">Use this</button>` : `<span class="bad">More than the ${fmt.int(E.maxPerArm)} per arm the valley can supply: start earlier.</span>`));
@@ -595,7 +595,7 @@ function truthText(ve) {
     (covered ? 'Your 95% CI covered the true ITT efficacy.' : 'Your 95% CI missed the true ITT efficacy, which should happen about 1 time in 20.');
 }
 
-/** CONSORT 2010 participant flow diagram. */
+/** CONSORT participant flow diagram. */
 function consortHTML(c) {
   const box = (t, extra = '') => `<div class="cbox ${extra}">${t}</div>`;
   const armCol = (a, name) => `<div class="ccol">
@@ -605,7 +605,7 @@ function consortHTML(c) {
       <div class="carrow">↓</div>
       ${box(`<b>Analysed</b> (n = ${fmt.int(a.analysed)})<br>Analysed as randomised (ITT)`)}
     </div>`;
-  return `<div class="panel consort"><div class="panel-head"><div><div class="panel-title">CONSORT flow diagram</div><div class="panel-sub">participant flow through the trial, as required by the CONSORT 2010 statement</div></div></div>
+  return `<div class="panel consort"><div class="panel-head"><div><div class="panel-title">CONSORT flow diagram</div><div class="panel-sub">participant flow through the trial, in CONSORT format</div></div></div>
     <div class="cgrid">
       <div class="crow"><span class="cstage">Enrolment</span>${box(`Assessed for eligibility (n = ${fmt.int(c.screened)})`)}</div>
       <div class="crow side"><div class="carrow">↓</div>${box(`<b>Excluded</b> (n = ${fmt.int(c.excluded)})<br>Not meeting inclusion criteria (n = ${fmt.int(c.notEligible)})<br>Declined to participate (n = ${fmt.int(c.declined)})<br>Other reasons (n = ${fmt.int(c.other)})`, 'excl')}</div>

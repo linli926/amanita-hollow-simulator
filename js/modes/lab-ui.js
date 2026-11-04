@@ -23,18 +23,18 @@ export const V = {
 };
 
 export const BLOCKS = [
-  { id: 'obs', title: 'Observational designs', ref: 'Reilly, Controlled Epidemiological Studies' },
-  { id: 'rct', title: 'Randomised trials', ref: 'Hackshaw, A Concise Guide to Clinical Trials' },
+  { id: 'obs', title: 'Observational designs', ref: '' },
+  { id: 'rct', title: 'Randomised trials', ref: '' },
 ];
 
 const ALL_STUDIES = [
-  { id: 'confounding', block: 'obs', title: 'Confounding and the case for randomisation', short: 'Confounding vs randomisation', ref: 'Reilly ch. 1–2' },
-  { id: 'casecontrol', block: 'obs', title: 'Case–control, logistic regression and test-negative designs', short: 'Case–control & test-negative', ref: 'Reilly ch. 1, 2, 5' },
-  { id: 'sampling', advanced: true, block: 'obs', title: 'Sampling the study base: nested case–control and case–cohort', short: 'Nested case–control & case–cohort', ref: 'Reilly ch. 3, 4, 6, 8' },
-  { id: 'reuse', advanced: true, block: 'obs', title: 'Reusing case–control data for a secondary outcome', short: 'Reusing case–control data', ref: 'Reilly ch. 7' },
-  { id: 'randomisation', block: 'rct', title: 'Randomisation schemes and sample size', short: 'Randomisation & sample size', ref: 'Hackshaw: randomisation, sample size' },
-  { id: 'conduct', advanced: true, block: 'rct', title: 'Non-compliance and interim analyses', short: 'Non-compliance & interim looks', ref: 'Hackshaw: analysis populations, data monitoring' },
-  { id: 'phase3', block: 'rct', title: 'Phase III trial of the Amanita vaccine', short: 'Phase III trial', ref: 'Hackshaw: design, analysis, CONSORT reporting' },
+  { id: 'confounding', block: 'obs', title: 'Confounding and the case for randomisation', short: 'Confounding vs randomisation', ref: '' },
+  { id: 'casecontrol', block: 'obs', title: 'Case–control, logistic regression and test-negative designs', short: 'Case–control & test-negative', ref: '' },
+  { id: 'sampling', advanced: true, block: 'obs', title: 'Sampling the study base: nested case–control and case–cohort', short: 'Nested case–control & case–cohort', ref: '' },
+  { id: 'reuse', advanced: true, block: 'obs', title: 'Reusing case–control data for a secondary outcome', short: 'Reusing case–control data', ref: '' },
+  { id: 'randomisation', block: 'rct', title: 'Randomisation schemes and sample size', short: 'Randomisation & sample size', ref: '' },
+  { id: 'conduct', advanced: true, block: 'rct', title: 'Non-compliance and interim analyses', short: 'Non-compliance & interim looks', ref: '' },
+  { id: 'phase3', block: 'rct', title: 'Phase III trial of the Amanita vaccine', short: 'Phase III trial', ref: '' },
 ];
 /** Advanced case studies are implemented and tested but hidden until the basics are signed off. */
 export const SHOW_ADVANCED = false;
@@ -58,7 +58,7 @@ export function bind(id, key, fmtFn, onChange, transform = v => v) {
 
 export function article(s, body) {
   const b = BLOCKS.find(x => x.id === s.block);
-  return `<div class="study-head"><div class="eyebrow">CASE STUDY ${s.num} OF ${STUDIES.length} · ${b.title.toUpperCase()}</div><h2>${s.title}</h2><div class="study-ref">${s.ref}</div></div>${body}`;
+  return `<div class="study-head"><div class="eyebrow">CASE STUDY ${s.num} OF ${STUDIES.length} · ${b.title.toUpperCase()}</div><h2>${s.title}</h2>${s.ref ? `<div class="study-ref">${s.ref}</div>` : ''}</div>${body}`;
 }
 
 export function chartPanel(id, title, sub, cls = '') {

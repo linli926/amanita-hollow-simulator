@@ -9,7 +9,7 @@ A flood has torn open a cavern beneath the valley of **Amanita Hollow**, releasi
 | **I · Outbreak Architect** | the pathogen | Design R₀, latent and infectious periods, CFR, population and immunity, then watch the outbreak run deterministically or as a stochastic ensemble | SEIRD ODE (RK4), Gillespie SSA, tau-leaping, final-size equation, branching-process extinction, Euler–Lotka growth rate |
 | **II · Field Epidemiologist** | the detective | Estimate R₀ and the reporting rate from noisy, incomplete clinic data. Wait for more data, auto-fit, forecast the peak, then reveal the truth | Negative-binomial likelihood, Nelder–Mead MLE, profile-likelihood CI with a misspecification adjustment, Poisson GLM (IRLS), Cori Rₜ |
 | **III · Clinical Trial** | the biostatistician | Design and run a randomised trial of the antifungal *Volvarin*: sample size, accrual, follow-up, dropout | Weibull PH simulation, block randomisation, Kaplan–Meier + Greenwood, log-rank, Cox PH (Newton–Raphson), C-index, Nelson–Aalen, log(−log) PH check, Schoenfeld power + Monte Carlo power |
-| **V · Vaccine Lab** | the study designer | Four core case studies (three advanced ones are implemented but hidden for now) in two blocks, mapped to Reilly, *Controlled Epidemiological Studies* and Hackshaw, *A Concise Guide to Clinical Trials* | Confounding and Mantel–Haenszel stratification; case–control with logistic regression (IRLS) and the test-negative design; nested case–control (risk-set sampling, conditional logistic regression) vs case–cohort (Barlow-weighted Cox, robust variance) vs full cohort; reusing case–control data for a secondary outcome (IPW); ITT vs per-protocol vs as-treated vs CACE; group-sequential monitoring (Pocock, O'Brien–Fleming); simple vs block vs stratified randomisation; sample size and power for VE > 0 and for the licensure criterion (lower bound > 30%); Phase III trial with subgroup analysis and a CONSORT flow diagram |
+| **V · Vaccine Lab** | the study designer | Four core case studies in two blocks, observational designs and randomised trials (three advanced ones are implemented but hidden for now) | Confounding and Mantel–Haenszel stratification; case–control with logistic regression (IRLS) and the test-negative design; nested case–control (risk-set sampling, conditional logistic regression) vs case–cohort (Barlow-weighted Cox, robust variance) vs full cohort; reusing case–control data for a secondary outcome (IPW); ITT vs per-protocol vs as-treated vs CACE; group-sequential monitoring (Pocock, O'Brien–Fleming); simple vs block vs stratified randomisation; sample size and power for VE > 0 and for the licensure criterion (lower bound > 30%); Phase III trial with subgroup analysis and a CONSORT flow diagram |
 | **IV · Outbreak Response** | the commander | Run a 20-week campaign across six villages on a budget: lockdowns, travel bans, test & isolate, vaccines, and treatment if your trial succeeded | Stochastic metapopulation SEIRD, gravity-model mobility, next-generation matrix Rₜ (power iteration), counterfactual replicates for grading |
 
 **One story, one pathogen.** The modes follow a real outbreak response, and each step is a core biostatistics skill:
@@ -17,7 +17,7 @@ A flood has torn open a cavern beneath the valley of **Amanita Hollow**, releasi
 1. **Model** the epidemic (I): the pathogen you design here is the one used everywhere else.
 2. **Estimate** R₀ from noisy surveillance data (II).
 3. **Test** a treatment in a survival-analysis trial (III): *Volvarin*, a fictional existing antifungal being repurposed, against placebo, both on top of standard care, in hospitalised patients. The placebo-arm mortality is derived from your pathogen's case fatality ratio.
-4. **Design** a vaccine trial that runs *during* the outbreak (V). Its placebo-arm attack rate is computed from your epidemic curve, so a trial that starts after the peak sees few cases and cannot reach its licensing criterion (the problem the Ebola and Zika vaccine trials faced).
+4. **Design** a vaccine trial that runs *during* the outbreak (V). Its placebo-arm attack rate is computed from your epidemic curve, so a trial that starts after the peak sees few cases and cannot reach its licensing criterion.
 5. **Respond** (IV). Villagers can be vaccinated only after the Phase III trial licenses the vaccine, from the week of the licensing decision.
 
 The modes are linked. The pathogen you release in I becomes the case file in II. A significant trial in III unlocks treatment in IV, with the true hazard ratio you set. A Phase III vaccine trial in V that meets the licensure criterion brings the vaccine to IV earlier (larger trials take longer to enrol), with its true population-average efficacy; otherwise only an unproven batch arrives in week 8.
@@ -105,19 +105,6 @@ js/
 tests/                node:test unit tests
 ```
 
-## References
-
-- Kermack & McKendrick (1927). A contribution to the mathematical theory of epidemics. *Proc R Soc A*.
-- Gillespie (1977). Exact stochastic simulation of coupled chemical reactions. *J Phys Chem*.
-- Diekmann, Heesterbeek & Metz (1990). On the definition and computation of R₀. *J Math Biol*.
-- Wallinga & Lipsitch (2007). How generation intervals shape the relationship between growth rates and reproductive numbers. *Proc R Soc B*.
-- Cori, Ferguson, Fraser & Cauchemez (2013). A new framework and software to estimate time-varying reproduction numbers. *Am J Epidemiol*.
-- Nelder & Mead (1965). A simplex method for function minimization. *Comput J*.
-- Kaplan & Meier (1958); Greenwood (1926); Mantel (1966); Cox (1972); Harrell et al. (1982); Schoenfeld (1983).
-- Greenland & Robins (1985). Estimation of a common effect parameter from sparse follow-up data. *Biometrics*.
-- Jackson & Nelson (2013). The test-negative design for estimating influenza vaccine effectiveness. *Vaccine*.
-- FDA (2020). Development and licensure of vaccines to prevent COVID-19: guidance for industry.
-- Xia, Bjørnstad & Grenfell (2004). Measles metapopulation dynamics: a gravity model for epidemiological coupling. *Am Nat*.
 
 ## 简介（中文）
 
@@ -126,7 +113,7 @@ tests/                node:test unit tests
 1. **病原设计师**：SEIRD 模型（RK4 积分）、Gillespie 随机模拟、最终规模方程、分支过程灭绝概率
 2. **现场流行病学家**：从带噪声的漏报数据中估计 R₀，方法包括负二项似然、Nelder–Mead 极大似然、profile likelihood 置信区间、Poisson GLM 和 Cori 实时 Rₜ
 3. **临床试验**：Kaplan–Meier、log-rank 检验、Cox 回归、Schoenfeld 样本量和模拟功效
-4. **疫苗实验室**：七个研究设计案例，分两部分：观察性研究（对应 Reilly 的教材：混杂、病例对照与 logistic 回归、巢式病例对照与病例队列、病例对照数据再利用）和随机对照试验（对应 Hackshaw 的教材：随机化与样本量、依从性与期中分析、III 期试验与 CONSORT 流程图）
+4. **疫苗实验室**：四个研究设计案例，分两部分：观察性研究（混杂与随机化、病例对照与 logistic 回归）和随机对照试验（随机化与样本量、III 期试验与 CONSORT 流程图）
 5. **疫情指挥**：六个村庄组成的元种群随机模型，有限预算下做干预决策；用下一代矩阵计算真实 Rₜ，最后和「不干预」的反事实模拟对比打分
 
 所有模式互相联动：模式一释放的病原就是模式二要调查的案件，模式三的试验显著后，模式四才能使用治疗。
