@@ -1,7 +1,7 @@
 // Mode IV — Outbreak Response: command interventions across the valley, week by week.
 
 import { createWorld, playWeek, weeklyCost, actionAvailable, totals, counterfactual, grade, refreshMixing,
-  ACTIONS, TREATMENT_COST, WEEKS, COMPASSIONATE_WEEK } from '../models/world.js';
+  ACTIONS, TREATMENT_COST, WEEKS, COMPASSIONATE_WEEK, LOW_BUDGET_SHARE } from '../models/world.js';
 import { generationInterval } from '../models/theory.js';
 import { coriRt } from '../stats/inference.js';
 import { randomSeed } from '../stats/rng.js';
@@ -106,6 +106,9 @@ function renderSidebar() {
   const hist = world.history.slice(0, shownDay);
   text('g-week', `${Math.min(world.week + (world.over ? 0 : 1), WEEKS)} / ${WEEKS}`);
   text('g-credits', `${world.credits.toFixed(1)}`);
+  const low = world.credits < LOW_BUDGET_SHARE * world.budget;
+  $('#g-credits').style.color = low ? 'var(--red-bright)' : '#b9a2e6';
+  $('#g-credits').title = low ? 'Less than 30% of the budget is left' : '';
   text('g-cases', fmt.int(hist.reduce((s, h) => s + h.reported.reduce((a, b) => a + b, 0), 0)));
   text('g-deaths', fmt.int(hist.reduce((s, h) => s + h.newDeaths.reduce((a, b) => a + b, 0), 0)));
   void t;
@@ -210,6 +213,11 @@ async function advance() {
   const before = world.day;
   const wasVaccineLocked = !actionAvailable(world, 'vaccine');
   const over = playWeek(world);
+  if (world.budgetWarning) {
+    world.budgetWarning = false;
+    const last = world.log.filter(l => l.msg.startsWith('Budget warning')).at(-1);
+    if (last) toast(last.msg, 10000);
+  }
   animating = true;
   renderSidebar(); renderFeed();
   // Animate the week day by day

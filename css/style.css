@@ -221,9 +221,9 @@ details.methods[open] summary { margin-bottom: 8px; }
 .toast {
   position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%) translateY(20px); opacity: 0;
   background: #101417; border: 1px solid var(--border-md); color: var(--bright); padding: 9px 16px;
-  font-size: 11px; border-radius: 3px; transition: all .3s; z-index: 1000; max-width: 90vw; text-align: center; pointer-events: none;
+  font-size: 11px; border-radius: 3px; transition: all .3s; z-index: 1000; max-width: min(90vw, 720px); text-align: center; pointer-events: none; line-height: 1.6;
 }
-.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; cursor: pointer; }
 
 .busy { opacity: 0.55; pointer-events: none; }
 

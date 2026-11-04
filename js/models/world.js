@@ -16,12 +16,13 @@ export const VILLAGES = [
 ];
 
 export const DIFFICULTY = {
-  easy: { R0: [1.8, 2.3], cfr: [0.012, 0.02], budget: 180, seeds: 2 },
-  normal: { R0: [2.2, 2.9], cfr: [0.02, 0.03], budget: 135, seeds: 3 },
-  hard: { R0: [2.8, 3.6], cfr: [0.03, 0.045], budget: 100, seeds: 4 },
+  easy: { R0: [1.8, 2.3], cfr: [0.012, 0.02], budget: 300, seeds: 2 },
+  normal: { R0: [2.2, 2.9], cfr: [0.02, 0.03], budget: 180, seeds: 3 },
+  hard: { R0: [2.8, 3.6], cfr: [0.03, 0.045], budget: 120, seeds: 4 },
 };
 
 export const WEEKS = 20;
+export const LOW_BUDGET_SHARE = 0.3; // warn once when credits fall below 30% of the budget
 export const MOBILITY = 0.08;
 export const COMPASSIONATE_WEEK = 10;
 const OVERLOAD = 0.03; // prevalence above which a village's wards overflow
@@ -148,6 +149,16 @@ function beginWeek(world, silent) {
   }
   world.credits = Math.round((world.credits - cost) * 10) / 10;
   world.spent = Math.round((world.spent + cost) * 10) / 10;
+  // One-time warning when less than 30% of the budget is left.
+  if (!world.lowBudgetWarned && world.credits < LOW_BUDGET_SHARE * world.budget) {
+    world.lowBudgetWarned = true;
+    const runway = cost > 0 ? Math.floor(world.credits / cost) : Infinity;
+    const vaccine = isFinite(world.vaccineWeek) && world.vaccineWeek > w
+      ? ` The vaccine arrives in week ${world.vaccineWeek}: keep about 6 credits a week per village for it.` : '';
+    say(world, 'alert', `Budget warning: ${world.credits.toFixed(1)} credits left (${Math.round(world.credits / world.budget * 100)}% of the budget). ` +
+      (isFinite(runway) ? `At this week's spending of ${cost.toFixed(1)} that lasts about ${runway} more week${runway === 1 ? '' : 's'}.` : '') + vaccine);
+    world.budgetWarning = true; // picked up by the UI for a toast
+  }
 }
 
 /** Transmission & reporting parameters for today given policy and events. */

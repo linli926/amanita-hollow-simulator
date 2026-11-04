@@ -17,12 +17,14 @@ const MODES = {
 };
 
 let toastTimer = 0;
-function toast(msg) {
+/** Brief message at the bottom of the screen. Stays longer for longer messages; click to dismiss. */
+function toast(msg, ms) {
   const el = $('#toast');
   el.textContent = msg;
   el.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 3800);
+  const duration = ms ?? Math.max(6000, msg.length * 60);
+  toastTimer = setTimeout(() => el.classList.remove('show'), duration);
 }
 
 const banner = html => { $('#storyBanner').innerHTML = html; };
@@ -45,6 +47,7 @@ function renderEquations() {
 
 function boot() {
   const ctx = { toast, setMode };
+  $('#toast').addEventListener('click', () => $('#toast').classList.remove('show'));
   initArchitect(ctx);
   initField(ctx);
   initTrial(ctx);

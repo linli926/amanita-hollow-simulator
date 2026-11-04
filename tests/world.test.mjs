@@ -41,3 +41,19 @@ test('running out of credits lifts actions', () => {
   assert.ok(w.credits >= 0);
   assert.ok(w.policy.filter(p => p.lockdown).length < w.policy.length);
 });
+
+test('budgets by difficulty, and a one-time warning below 30% of the budget', async () => {
+  const { DIFFICULTY } = await import('../js/models/world.js');
+  assert.equal(DIFFICULTY.easy.budget, 300);
+  assert.equal(DIFFICULTY.normal.budget, 180);
+  assert.equal(DIFFICULTY.hard.budget, 120);
+  const w = createWorld('normal', 4);
+  w.policy[0].lockdown = true; w.policy[0].test = true; // ~21.6 credits a week
+  let warnings = 0;
+  for (let k = 0; k < 12 && !w.over; k++) {
+    playWeek(w, { silent: true });
+    if (w.budgetWarning) { warnings++; w.budgetWarning = false; assert.ok(w.credits < 0.3 * w.budget); }
+  }
+  assert.equal(warnings, 1);
+  assert.equal(w.log.filter(l => l.msg.startsWith('Budget warning')).length, 1);
+});
