@@ -1,116 +1,50 @@
-// Mode V — Vaccine Lab: applied study design, presented as four short case studies.
+// Mode V — Vaccine Lab: applied study design, presented as case studies in two blocks
+// (observational designs; randomised trials). This file holds the shell and case studies
+// 1, 2, 5 and 7; lab-observational.js and lab-trials.js hold the others.
 
 import { runConfoundingStudy, runCaseControlStudy, randomise, balance, makePopulation, infectionRisk,
   table2x2, riskRatio, toVE, chiSquare2x2, mantelHaenszelRR, orFromRisks, expectedLogOrSE,
   sampleSizeTwoProportions, powerTwoProportions, sampleSizeVELowerBound, powerVELowerBound, AGE_GROUPS } from '../stats/design.js';
+import { logistic } from '../stats/regression.js';
 import { makeRng, randomSeed } from '../stats/rng.js';
 import { quantile } from '../stats/dist.js';
-import { Chart, COLORS, alpha, niceMax } from '../ui/chart.js';
-import { $, $$, fmt, html, defer, renderTeX } from '../ui/dom.js';
-import { state, update } from '../state.js';
+import { COLORS, alpha, niceMax } from '../ui/chart.js';
+import { $, $$, fmt, html, defer } from '../ui/dom.js';
+import { update } from '../state.js';
+import { V, results, BLOCKS, STUDIES, sliderHTML, bind, article, chartPanel, getChart, teX, pct, veStr, forest, signed } from './lab-ui.js';
+import { renderSampling, renderReuse } from './lab-observational.js';
+import { renderConduct } from './lab-trials.js';
 
 let toast;
 let current = 'confounding';
-const charts = {};
-const results = {};
-const V = {
-  // Study 1
-  ve1: 0.6, orAge: 2.5, orCaution: 3, n1: 20000,
-  // Study 2
-  ve2: 0.6, attack: 1, m: 4, seekOR: 2.5, veOther: 0, n2: 40000,
-  // Study 3
-  nRand: 60, p0: 0.04, veExp: 0.6, power: 0.9,
-  // Study 4
-  nArm: 2500, scheme: 'stratified',
-};
 let hidden = null; // Phase III truth
-
-const STUDIES = [
-  { id: 'confounding', num: 1, title: 'Confounding and the case for randomisation', short: 'Confounding vs randomisation' },
-  { id: 'casecontrol', num: 2, title: 'Case–control and test-negative designs', short: 'Case–control & test-negative' },
-  { id: 'randomisation', num: 3, title: 'Randomisation schemes and sample size', short: 'Randomisation & sample size' },
-  { id: 'phase3', num: 4, title: 'Phase III trial of the Amanita vaccine', short: 'Phase III trial' },
-];
 
 export function initLab(ctx) {
   toast = ctx.toast;
-  html('l-nav', STUDIES.map(s => `<button class="study-link${s.id === current ? ' on' : ''}" data-study="${s.id}"><span class="num">${s.num}</span><span>${s.short}</span></button>`).join(''));
-  $$('#l-nav [data-study]').forEach(b => b.addEventListener('click', () => { current = b.dataset.study; render(); }));
+  html('l-nav', BLOCKS.map(b => `<div class="study-block">${b.title}<span>${b.ref}</span></div>` +
+    STUDIES.filter(s => s.block === b.id).map(s => `<button class="study-link${s.id === current ? ' on' : ''}" data-study="${s.id}"><span class="num">${s.num}</span><span>${s.short}</span></button>`).join('')).join(''));
+  $$('#l-nav [data-study]').forEach(b => b.addEventListener('click', () => { current = b.dataset.study; render(); window.scrollTo({ top: 0 }); }));
 }
 
 export function enterLab(banner) {
   banner(`<em>SPORELAB · VACCINE PROGRAMME.</em> The Sporeford lab has a candidate vaccine. Before it reaches the villages, its efficacy has to be estimated, and the study design determines whether that estimate can be trusted. ` +
-    `Four case studies: why observational data mislead, two efficient observational designs, how to randomise and size a trial, and the Phase III trial itself. <em>A licensed vaccine reaches Outbreak Response earlier, with the efficacy your trial measured.</em>`);
+    `Seven applied case studies in two blocks: observational designs and randomised trials. <em>A licensed vaccine from case study 7 reaches Outbreak Response earlier, with the efficacy your trial measured.</em>`);
   render();
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Layout helpers
-
-function sliderHTML(id, label, min, max, step, value, hint = '') {
-  return `<div class="param"><div class="param-top"><span>${label}</span><span class="param-val" id="${id}-val"></span></div>
-    <input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${value}">${hint ? `<div class="param-hint">${hint}</div>` : ''}</div>`;
-}
-
-function bind(id, key, fmtFn, onChange, transform = v => v) {
-  const el = document.getElementById(id), lab = document.getElementById(id + '-val');
-  const show = () => { lab.textContent = fmtFn(transform(parseFloat(el.value))); };
-  show();
-  el.addEventListener('input', () => { V[key] = transform(parseFloat(el.value)); show(); onChange(); });
-}
-
-function article(s, body) {
-  return `<div class="study-head"><div class="eyebrow">CASE STUDY ${s.num} OF ${STUDIES.length}</div><h2>${s.title}</h2></div>${body}`;
-}
-
-function chartPanel(id, title, sub, cls = '') {
-  return `<div class="panel"><div class="panel-head"><div><div class="panel-title">${title}</div><div class="panel-sub">${sub}</div></div></div>
-    <div class="canvas-wrap ${cls}"><canvas id="${id}"></canvas></div><div class="panel-sub" id="${id}-cap" style="margin-top:4px"></div></div>`;
-}
-
-function getChart(id, opts) {
-  const el = document.getElementById(id);
-  if (!charts[id] || charts[id].canvas !== el) charts[id] = new Chart(el, opts);
-  return charts[id];
-}
-
-function teX() { $$('#l-article [data-tex]').forEach(el => renderTeX(el, el.dataset.tex, el.dataset.display === '1')); }
-
-const pct = (v, d = 0) => (v * 100).toFixed(d) + '%';
-const veStr = m => `${pct(m.est, 1)} <span class="dim">(${pct(m.lo, 1)} to ${pct(m.hi, 1)})</span>`;
-
-/** Forest plot of VE estimates on a linear % scale. rows: [{label, est, lo, hi, color}] */
-function forest(chart, rows, truth, opts = {}) {
-  const lo = Math.max(-1, Math.floor((Math.min(opts.min ?? 0, ...rows.map(r => r.lo)) - 0.02) * 10) / 10);
-  const hi = Math.min(1, Math.ceil((Math.max(opts.max ?? 1, ...rows.map(r => r.hi)) + 0.01) * 10) / 10);
-  const span = Math.round((hi - lo) * 10);
-  const ticks = span <= 10 ? span : span / 2 === Math.round(span / 2) ? span / 2 : span;
-  chart.render(c => {
-    c.axes({ pad: { left: 190, right: 24 }, xMin: lo, xMax: hi, yMin: 0, yMax: rows.length + 1, xTicks: ticks, yTicks: 1,
-      xFmt: v => Math.round(v * 100) + '%', yFmt: () => '', xLabel: 'vaccine efficacy (1 − ratio)' });
-    if (truth !== null && truth !== undefined) c.vline(truth, { color: COLORS.truth, dash: [3, 3], label: `true VE ${pct(truth)}`, labelY: 10 });
-    c.vline(0, { color: 'rgba(185,160,115,0.3)', dash: [] });
-    rows.forEach((r, i) => {
-      const y = rows.length - i;
-      c.line([r.lo, r.hi], [y, y], { color: r.color, width: 2 });
-      c.marks([r.est], [y], { shape: 'dot', color: r.color, size: 4.5 });
-      c.text(r.label, c.pad.left - 10, c.Y(y) + 3, { px: true, align: 'right', color: COLORS.text });
-    });
-  }, x => [{ text: `VE ${pct(x, 1)}` }]);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 
 function render() {
   $$('#l-nav [data-study]').forEach(b => b.classList.toggle('on', b.dataset.study === current));
-  ({ confounding: renderConfounding, casecontrol: renderCaseControl, randomisation: renderRandomisation, phase3: renderPhase3 })[current]();
+  ({ confounding: renderConfounding, casecontrol: renderCaseControl, sampling: renderSampling, reuse: renderReuse,
+    randomisation: renderRandomisation, conduct: renderConduct, phase3: renderPhase3 })[current](toast);
   teX();
 }
 
 // ═════════════════════════ Study 1 · Confounding ═════════════════════════
 
 function renderConfounding() {
-  const s = STUDIES[0];
+  const s = STUDIES.find(x => x.id === 'confounding');
   html('l-controls', `<div class="sec-head">Scenario</div>
     ${sliderHTML('l1-ve', 'True vaccine efficacy', 0, 0.95, 0.05, V.ve1)}
     ${sliderHTML('l1-age', 'Uptake odds ratio per age band', 0.25, 4, 0.05, V.orAge, '&gt; 1: older residents vaccinate more (they are also at higher risk)')}
@@ -199,7 +133,6 @@ function drawConfounding() {
   html('l1-interp', parts.map(p => `<p>${p}</p>`).join(''));
 }
 
-function signed(x) { const v = x * 100; return (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(1); }
 
 async function replicateConfounding() {
   const btn = $('#l1-rep'); btn.disabled = true; btn.textContent = '⚄ RUNNING 100 STUDIES…';
@@ -241,18 +174,19 @@ async function replicateConfounding() {
 // ═════════════════════════ Study 2 · Case–control & test-negative ═════════════════════════
 
 function renderCaseControl() {
-  const s = STUDIES[1];
+  const s = STUDIES.find(x => x.id === 'casecontrol');
   html('l-controls', `<div class="sec-head">Scenario</div>
     ${sliderHTML('l2-ve', 'True vaccine efficacy', 0.1, 0.95, 0.05, V.ve2)}
     ${sliderHTML('l2-attack', 'Season attack rate (× baseline)', 0.1, 4, 0.1, V.attack, 'baseline: 6–18% by age band in the unvaccinated')}
     ${sliderHTML('l2-m', 'Controls per case', 1, 10, 1, V.m)}
+    ${sliderHTML('l2-age', 'Uptake odds ratio per age band', 0.5, 4, 0.1, V.orAge2, '&gt; 1: older, higher-risk residents vaccinate more (a measured confounder)')}
     ${sliderHTML('l2-seek', 'Health-seekers: uptake odds ratio', 1, 6, 0.1, V.seekOR, 'People who seek care readily are also more likely to vaccinate, and to get tested when ill')}
     ${sliderHTML('l2-veo', 'Vaccine effect on other illnesses', 0, 0.6, 0.05, V.veOther, 'Should be 0. A non-zero value breaks the test-negative assumption.')}
     <button class="btn btn-green" id="l2-run">⟳ DRAW A NEW SAMPLE</button>`);
   html('l-article', article(s, `
     <div class="study-grid">
       <div><h3>Question</h3><p>Following 40,000 residents for a whole season is expensive. Can we estimate vaccine efficacy by sampling only some of them, and what happens when we rely on cases that happen to be tested at a clinic?</p></div>
-      <div><h3>Design</h3><p>A full cohort is simulated as a benchmark. From it, a <em>case–control study</em> samples all cases plus <em>m</em> controls per case from non-cases. A <em>test-negative design</em> uses everyone tested for a febrile illness: those positive for Amanita are cases and those negative (another "valley fever") are controls. This is how influenza and COVID-19 vaccine effectiveness are monitored in practice.</p></div>
+      <div><h3>Design</h3><p>A full cohort is simulated as a benchmark. From it, a <em>case–control study</em> samples all cases plus <em>m</em> controls per case from non-cases, and adjusts for age band with <em>logistic regression</em>. A <em>test-negative design</em> uses everyone tested for a febrile illness: those positive for Amanita are cases and those negative (another "valley fever") are controls. This is how influenza and COVID-19 vaccine effectiveness are monitored in practice.</p></div>
     </div>
     <div class="grid-2">
       ${chartPanel('l2-forest', 'Estimated efficacy by design', 'point estimate with 95% CI · dashed = truth')}
@@ -264,16 +198,18 @@ function renderCaseControl() {
     </div>
     <details class="methods" open><summary>▸ METHODS</summary><div class="method-grid">
       <div><h4>Odds ratio and Woolf CI</h4><div class="tex" data-tex="\\widehat{\\text{OR}}=\\frac{ad}{bc},\\quad \\text{SE}(\\log\\widehat{\\text{OR}})=\\sqrt{\\tfrac1a+\\tfrac1b+\\tfrac1c+\\tfrac1d}" data-display="1"></div><p>VE = 1 − OR. With controls sampled from non-cases at the end of follow-up (cumulative sampling), OR ≈ RR only when the outcome is rare.</p></div>
+      <div><h4>Logistic regression in a case–control sample</h4><div class="tex" data-tex="\\operatorname{logit}P(\\text{case}\\mid x)=\\alpha^*+\\beta\\,\\text{vax}+\\gamma_1[40\\text{–}64]+\\gamma_2[65+]" data-display="1"></div><p>Sampling on case status only shifts the intercept (α* = α + log of the sampling-fraction ratio), so e<sup>β</sup> is a valid adjusted odds ratio. Fitted by IRLS.</p><p class="cite">Prentice &amp; Pyke (1979)</p></div>
       <div><h4>Why OR drifts from RR</h4><div class="tex" data-tex="\\text{OR}=\\text{RR}\\cdot\\frac{1-r_0}{1-r_1}" data-display="1"></div><p>With a protective vaccine (r₁ &lt; r₀) the OR is further from 1 than the RR, so VE from the OR overstates efficacy when attack rates are high.</p></div>
       <div><h4>Test-negative design</h4><div class="tex" data-tex="\\text{VE}_{TND}=1-\\frac{\\text{odds}(\\text{vax}\\mid\\text{test}+)}{\\text{odds}(\\text{vax}\\mid\\text{test}-)}" data-display="1"></div><p>Health-care seeking affects who is tested equally for cases and controls, so it cancels. Valid if the vaccine does not change the risk of the control illness.</p><p class="cite">Jackson &amp; Nelson (2013); Sullivan, Tchetgen Tchetgen &amp; Cowling (2016)</p></div>
     </div></details>`));
   results.c2seed ??= randomSeed();
-  const rerun = () => { results.c2 = runCaseControlStudy({ n: V.n2, ve: V.ve2, attackScale: V.attack, controlsPerCase: V.m, seekOR: V.seekOR, veOther: V.veOther, otherIllness: 0.15 }, makeRng(results.c2seed)); drawCaseControl(); };
+  const rerun = () => { results.c2 = runCaseControlStudy({ n: V.n2, ve: V.ve2, attackScale: V.attack, controlsPerCase: V.m, seekOR: V.seekOR, veOther: V.veOther, otherIllness: 0.15, orAge: V.orAge2 }, makeRng(results.c2seed)); drawCaseControl(); };
   let t = 0;
   const later = () => { clearTimeout(t); t = setTimeout(rerun, 60); };
   bind('l2-ve', 've2', v => pct(v), later);
   bind('l2-attack', 'attack', v => '× ' + v.toFixed(1), later);
   bind('l2-m', 'm', v => v + ' : 1', later);
+  bind('l2-age', 'orAge2', v => v.toFixed(1), later);
   bind('l2-seek', 'seekOR', v => v.toFixed(1), later);
   bind('l2-veo', 'veOther', v => pct(v), later);
   $('#l2-run').addEventListener('click', () => { results.c2seed = randomSeed(); rerun(); });
@@ -282,11 +218,19 @@ function renderCaseControl() {
 
 function drawCaseControl() {
   const r = results.c2;
+  const adj = rows => {
+    const c = logistic(rows.map(x => [x.vax, x.ag === 1 ? 1 : 0, x.ag === 2 ? 1 : 0]), rows.map(x => (x.case ? 1 : 0))).coefs[1];
+    return { est: c.or, lo: c.lo, hi: c.hi };
+  };
+  r.est.cohortAdj = mantelHaenszelRR([0, 1, 2].map(ag => table2x2(r.rows.filter(x => x.ag === ag))));
+  r.est.ccAdj = adj(r.ccRows);
+  r.est.tndAdj = adj(r.testedRows);
   const rows = [
-    { label: 'Full cohort (RR)', ...toVE(r.est.cohort), color: COLORS.R },
+    { label: 'Full cohort, age-adj. (MH RR)', ...toVE(r.est.cohortAdj), color: COLORS.R },
     { label: 'Clinic-confirmed cohort', ...toVE(r.est.surv), color: COLORS.I },
-    { label: `Case–control 1:${V.m} (OR)`, ...toVE(r.est.cc), color: COLORS.obs },
-    { label: 'Test-negative (OR)', ...toVE(r.est.tnd), color: COLORS.guess },
+    { label: `Case–control 1:${V.m}, crude OR`, ...toVE(r.est.cc), color: alpha(COLORS.obs, 0.55) },
+    { label: `Case–control, age-adj. (logistic)`, ...toVE(r.est.ccAdj), color: COLORS.obs },
+    { label: 'Test-negative, age-adj. (logistic)', ...toVE(r.est.tndAdj), color: COLORS.guess },
   ];
   forest(getChart('l2-forest'), rows, V.ve2);
   html('l2-forest-cap', `${fmt.int(V.n2)} residents · ${fmt.int(r.nCases)} infections · ${fmt.int(r.nControls)} sampled controls · ${fmt.int(r.nTested)} tested · attack rate ${pct(r.attack.unvax, 1)} unvaccinated vs ${pct(r.attack.vax, 1)} vaccinated`);
@@ -322,19 +266,20 @@ function drawCaseControl() {
 
   const ve = k => 1 - r.est[k].est;
   const parts = [];
-  parts.push(`With ${fmt.int(r.nCases)} cases and ${V.m} controls each, the case–control study needs data on about <em>${fmt.int(r.nCases + r.nControls)}</em> people instead of ${fmt.int(V.n2)}, and estimates VE at <em>${pct(ve('cc'), 1)}</em> (full cohort: ${pct(ve('cohort'), 1)}).`);
+  parts.push(`With ${fmt.int(r.nCases)} cases and ${V.m} controls each, the case–control study needs data on about <em>${fmt.int(r.nCases + r.nControls)}</em> people instead of ${fmt.int(V.n2)}. After adjusting for age band it estimates VE at <em>${pct(ve('ccAdj'), 1)}</em> (full cohort, age-adjusted: ${pct(ve('cohortAdj'), 1)}).`);
+  if (Math.abs(ve('cc') - ve('ccAdj')) > 0.02) parts.push(`The crude case–control estimate is ${pct(ve('cc'), 1)}. Older residents are both more often vaccinated and more often infected, so age confounds the crude OR. Logistic regression removes it because age band was measured. Sampling on case status does not invalidate the adjusted OR, only the intercept.`);
   if (cur > 0.12) parts.push(`This season's attack rate (${pct(cur, 0)}) is high, so the OR no longer approximates the RR and the case–control estimate overstates efficacy.`);
   if (V.seekOR > 1.2) parts.push(`Counting only clinic-confirmed cases gives <em>${pct(ve('surv'), 1)}</em>. Vaccinated residents are more often health-seekers and so more often tested, which makes them appear to have <em>more</em> disease. This is <em>detection bias</em>.`);
   parts.push(V.veOther > 0.02
-    ? `The test-negative estimate (<em>${pct(ve('tnd'), 1)}</em>) is biased downward here. Because the vaccine also prevents some "valley fever", vaccinated people are under-represented among test-negative controls. This breaks the design's key assumption.`
-    : `The test-negative design estimates <em>${pct(ve('tnd'), 1)}</em>. Health-seeking drives testing equally in cases and controls, so the bias cancels out of the odds ratio. That is why public-health agencies favour this design for routine vaccine monitoring.`);
+    ? `The test-negative estimate (<em>${pct(ve('tndAdj'), 1)}</em>) is biased downward here. Because the vaccine also prevents some "valley fever", vaccinated people are under-represented among test-negative controls. This breaks the design's key assumption.`
+    : `The age-adjusted test-negative design estimates <em>${pct(ve('tndAdj'), 1)}</em>. Health-seeking drives testing equally in cases and controls, so the bias cancels out of the odds ratio. That is why public-health agencies favour this design for routine vaccine monitoring.`);
   html('l2-interp', parts.map(p => `<p>${p}</p>`).join(''));
 }
 
 // ═════════════════════════ Study 3 · Randomisation & sample size ═════════════════════════
 
 function renderRandomisation() {
-  const s = STUDIES[2];
+  const s = STUDIES.find(x => x.id === 'randomisation');
   html('l-controls', `<div class="sec-head">Randomisation</div>
     ${sliderHTML('l3-n', 'Participants in a small trial', 12, 200, 2, V.nRand)}
     <button class="btn" id="l3-sim">⚄ SIMULATE 2,000 ALLOCATIONS</button>
@@ -458,7 +403,7 @@ function drawSampleSize() {
     <tr><td style="color:${COLORS.R}">Lower 95% bound &gt; 30%</td><td class="r">${isFinite(nLic) ? fmt.int(nLic) : '∞'}</td><td class="r">${isFinite(nLic) ? fmt.int(2 * nLic) : '∞'}</td><td class="r">${isFinite(nLic) ? fmt.int(expCases(nLic)) : '—'}</td></tr>
   </table>
   <p class="dim" style="margin-top:8px;font-size:10.5px;line-height:1.6">Power is driven by the number of <em>cases</em>, not participants: halving the attack rate roughly doubles the sample size. Showing the vaccine beats a 30% bar needs ${isFinite(nLic) ? (nLic / nSup).toFixed(1) + '×' : 'far'} more participants than showing it beats placebo. ${ve <= 0.35 ? 'An expected VE this close to 30% makes the licensure criterion almost unreachable.' : ''}</p>
-  <p class="dim" style="font-size:10.5px">These assumptions carry into case study 4.</p>`);
+  <p class="dim" style="font-size:10.5px">These assumptions carry into case study 7.</p>`);
 }
 
 // ═════════════════════════ Study 4 · Phase III ═════════════════════════
@@ -484,14 +429,14 @@ function marginalVE(h) {
 export function approvalWeek(nPerArm) { return 3 + Math.ceil((2 * nPerArm) / 3000); }
 
 function renderPhase3() {
-  const s = STUDIES[3];
+  const s = STUDIES.find(x => x.id === 'phase3');
   if (!hidden) newHidden();
   const plan = sampleSizeVELowerBound(V.p0, V.veExp, 0.3, V.power);
   html('l-controls', `<div class="sec-head">Trial protocol</div>
     ${sliderHTML('l4-n', 'Participants per arm', 200, 12000, 100, V.nArm)}
     <div class="param"><div class="param-top"><span>Randomisation</span></div>
       <div class="seg" id="l4-scheme">${SCHEMES.map(([id, label]) => `<button data-s="${id}" class="${V.scheme === id ? 'on' : ''}">${label.replace(' (4)', '')}</button>`).join('')}</div></div>
-    <div class="note" style="margin-top:4px">Planning assumptions from case study 3: attack rate ${pct(V.p0, 1)}, VE ${pct(V.veExp)}, power ${pct(V.power)} → <em>${isFinite(plan) ? fmt.int(plan) : '∞'} per arm</em>. <button class="link-btn" id="l4-use">Use this</button></div>
+    <div class="note" style="margin-top:4px">Planning assumptions from case study 5: attack rate ${pct(V.p0, 1)}, VE ${pct(V.veExp)}, power ${pct(V.power)} → <em>${isFinite(plan) ? fmt.int(plan) : '∞'} per arm</em>. <button class="link-btn" id="l4-use">Use this</button></div>
     <div class="note" id="l4-time" style="margin-top:6px"></div>
     <button class="btn btn-green" id="l4-run" style="margin-top:10px">▶ RUN THE PHASE III TRIAL</button>
     <button class="btn" id="l4-new">⟳ NEW CANDIDATE (UNKNOWN TRUTH)</button>`);
@@ -503,6 +448,7 @@ function renderPhase3() {
     <div id="l4-out"><div class="note">Set the protocol and run the trial.</div></div>
     <details class="methods"><summary>▸ METHODS</summary><div class="method-grid">
       <div><h4>Primary analysis</h4><div class="tex" data-tex="\\widehat{\\text{VE}}=1-\\frac{a/n_1}{c/n_0},\\quad \\text{CI from }\\log\\widehat{\\text{RR}}\\pm 1.96\\,\\text{SE}" data-display="1"></div><p>Intention-to-treat, Pearson χ² test, and an age-stratified Mantel–Haenszel estimate as a sensitivity analysis.</p></div>
+      <div><h4>Reporting</h4><p>Participant flow follows the CONSORT 2010 statement: screening, exclusions with reasons, allocation, receipt of the intervention, losses to follow-up and the analysed population per arm.</p><p class="cite">Schulz, Altman &amp; Moher (2010)</p></div>
       <div><h4>Subgroups</h4><p>VE by age band with 95% CIs. Subgroup CIs are wide, and a trial powered for the overall effect is rarely powered for interactions.</p></div>
       <div><h4>Link to Outbreak Response</h4><p>A licensed vaccine becomes available in week ${approvalWeek(V.nArm)} instead of week 8, with the true efficacy. Without a licence the unproven batch arrives in week 8 with 50% efficacy.</p></div>
     </div></details>`));
@@ -523,16 +469,28 @@ async function runPhase3() {
     const n = 2 * V.nArm;
     const people = makePopulation(n, rng);
     const arms = randomise(people.map(p => p.ag), V.scheme, rng);
-    const rows = people.map((p, i) => {
+    // Screening before randomisation (CONSORT "assessed for eligibility")
+    const excluded = rng.binomial(Math.round(n / 0.82), 0.18);
+    const notEligible = rng.binomial(excluded, 0.62), declined = rng.binomial(excluded - notEligible, 0.75);
+    const all = people.map((p, i) => {
       const vax = arms[i];
+      const received = rng.bernoulli(0.98);              // a few never get their allocated injection
+      const lost = rng.bernoulli(0.03);                  // no outcome ascertained
       const ve = p.ag === 2 ? hidden.ve * hidden.elderlyFactor : hidden.ve;
-      const risk = infectionRisk(p, vax, ve, { baseRisk: [hidden.p0 * 0.8, hidden.p0, hidden.p0 * 1.4], cautionEffect: 0.6 });
-      return { ag: p.ag, vax, case: rng.bernoulli(risk) };
+      const risk = infectionRisk(p, vax && received, ve, { baseRisk: [hidden.p0 * 0.8, hidden.p0, hidden.p0 * 1.4], cautionEffect: 0.6 });
+      return { ag: p.ag, vax, received, lost, case: rng.bernoulli(risk) };
     });
+    const rows = all.filter(r => !r.lost);                // ITT on everyone with an outcome
+    const arm = v => all.filter(r => r.vax === v);
+    const consort = {
+      screened: n + excluded, excluded, notEligible, declined, other: excluded - notEligible - declined, randomised: n,
+      arms: [1, 0].map(v => ({ allocated: arm(v).length, received: arm(v).filter(r => r.received).length, notReceived: arm(v).filter(r => !r.received).length,
+        lost: arm(v).filter(r => r.lost).length, analysed: arm(v).filter(r => !r.lost).length })),
+    };
     const t = table2x2(rows);
     const strata = [0, 1, 2].map(ag => table2x2(rows.filter(r => r.ag === ag)));
     const safeRR = tb => riskRatio(tb.a && tb.c ? tb : { a: tb.a + 0.5, b: tb.b + 0.5, c: tb.c + 0.5, d: tb.d + 0.5 });
-    return { t, strata, rr: safeRR(t), mh: mantelHaenszelRR(strata), test: chiSquare2x2(t), sub: strata.map(safeRR), n, nArm: V.nArm, scheme: V.scheme,
+    return { t, strata, consort, rr: safeRR(t), mh: mantelHaenszelRR(strata), test: chiSquare2x2(t), sub: strata.map(safeRR), n, nArm: V.nArm, scheme: V.scheme,
       old: [rows.filter(r => r.vax && r.ag === 2).length, rows.filter(r => !r.vax && r.ag === 2).length] };
   });
   btn.disabled = false; btn.textContent = '▶ RUN THE PHASE III TRIAL';
@@ -557,12 +515,13 @@ function drawPhase3() {
       <div class="stat-box"><div class="stat-v">${P.t.a} vs ${P.t.c}</div><div class="stat-l">cases: vaccine vs placebo</div></div>
       <div class="stat-box"><div class="stat-v">${fmt.p(P.test.p)}</div><div class="stat-l">p-value, χ²₁ = ${P.test.chi2.toFixed(1)}</div></div>
     </div>
+    ${consortHTML(P.consort)}
     <div class="grid-2" style="margin-top:12px">
       ${chartPanel('l4-forest', 'Efficacy overall and by age band', 'subgroup estimates with 95% CI · dashed = 30% licensure bar')}
       <div class="panel"><div class="panel-head"><div class="panel-title">Trial report</div><div class="panel-sub">${fmt.int(P.n)} randomised · ${SCHEMES.find(s => s[0] === P.scheme)[1].toLowerCase()} randomisation</div></div>
         <table class="res">
           <tr><th></th><th class="r">Vaccine</th><th class="r">Placebo</th></tr>
-          <tr><td>Randomised</td><td class="r">${fmt.int(P.t.a + P.t.b)}</td><td class="r">${fmt.int(P.t.c + P.t.d)}</td></tr>
+          <tr><td>Randomised · analysed</td><td class="r">${fmt.int(P.consort.arms[0].allocated)} · ${fmt.int(P.t.a + P.t.b)}</td><td class="r">${fmt.int(P.consort.arms[1].allocated)} · ${fmt.int(P.t.c + P.t.d)}</td></tr>
           <tr><td>Aged 65+</td><td class="r">${fmt.int(P.old[0])}</td><td class="r">${fmt.int(P.old[1])}</td></tr>
           <tr><td>Confirmed cases (attack rate)</td><td class="r">${P.t.a} (${pct(P.rr.r1, 2)})</td><td class="r">${P.t.c} (${pct(P.rr.r0, 2)})</td></tr>
           <tr><td>Primary VE, ITT</td><td class="r" colspan="2">${veStr(ve)}</td></tr>
@@ -592,6 +551,26 @@ function drawPhase3() {
   $('#l4-reveal').addEventListener('click', () => { results.p3revealed = true; drawPhase3(); });
 }
 
+/** CONSORT 2010 participant flow diagram. */
+function consortHTML(c) {
+  const box = (t, extra = '') => `<div class="cbox ${extra}">${t}</div>`;
+  const armCol = (a, name) => `<div class="ccol">
+      ${box(`<b>Allocated to ${name}</b> (n = ${fmt.int(a.allocated)})<br>Received allocated injection (n = ${fmt.int(a.received)})<br>Did not receive it (n = ${fmt.int(a.notReceived)})`)}
+      <div class="carrow">↓</div>
+      ${box(`Lost to follow-up, no outcome (n = ${fmt.int(a.lost)})`)}
+      <div class="carrow">↓</div>
+      ${box(`<b>Analysed</b> (n = ${fmt.int(a.analysed)})<br>Analysed as randomised (ITT)`)}
+    </div>`;
+  return `<div class="panel consort"><div class="panel-head"><div><div class="panel-title">CONSORT flow diagram</div><div class="panel-sub">participant flow through the trial, as required by the CONSORT 2010 statement</div></div></div>
+    <div class="cgrid">
+      <div class="crow"><span class="cstage">Enrolment</span>${box(`Assessed for eligibility (n = ${fmt.int(c.screened)})`)}</div>
+      <div class="crow side"><div class="carrow">↓</div>${box(`<b>Excluded</b> (n = ${fmt.int(c.excluded)})<br>Not meeting inclusion criteria (n = ${fmt.int(c.notEligible)})<br>Declined to participate (n = ${fmt.int(c.declined)})<br>Other reasons (n = ${fmt.int(c.other)})`, 'excl')}</div>
+      <div class="crow">${box(`<b>Randomised</b> (n = ${fmt.int(c.randomised)})`)}</div>
+      <div class="crow"><span class="cstage">Allocation · Follow-up · Analysis</span></div>
+      <div class="carms">${armCol(c.arms[0], 'vaccine')}${armCol(c.arms[1], 'placebo')}</div>
+    </div></div>`;
+}
+
 function phase3Interp(P, ve, licensed) {
   const cases = P.t.a + P.t.c;
   const w = (ve.hi - ve.lo) * 100;
@@ -604,4 +583,3 @@ function phase3Interp(P, ve, licensed) {
   return s;
 }
 
-export { STUDIES };

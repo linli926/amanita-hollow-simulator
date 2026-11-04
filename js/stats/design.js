@@ -147,7 +147,7 @@ export function runCaseControlStudy(o, rng) {
   const rows = people.map(p => {
     const seeker = rng.bernoulli(0.5);
     // Health-care seekers are also more likely to get vaccinated (seekOR).
-    const vax = rng.bernoulli(expit(logit(0.45) + Math.log(o.seekOR) * (seeker - 0.5)));
+    const vax = rng.bernoulli(expit(logit(0.45) + Math.log(o.seekOR) * (seeker - 0.5) + Math.log(o.orAge ?? 1) * (p.ag - 1)));
     const infected = rng.bernoulli(infectionRisk(p, vax, o.ve, { riskScale: o.attackScale, cautionEffect: 1 }));
     // Some other febrile illness ("valley fever") that the vaccine shouldn't affect.
     const other = !infected && rng.bernoulli((o.otherIllness ?? 0.15) * (vax ? 1 - (o.veOther ?? 0) : 1));
@@ -175,7 +175,7 @@ export function runCaseControlStudy(o, rng) {
 
   const attack = { vax: cohort.r1, unvax: cohort.r0 };
   return {
-    rows, cc, tnd, attack,
+    rows, cc, tnd, attack, ccRows: [...cases, ...controls], testedRows: tested,
     nCases: cases.length, nControls: controls.length, nTested: tested.length,
     est: { cohort, surv, cc: oddsRatio(cc), tnd: oddsRatio(tnd) },
   };

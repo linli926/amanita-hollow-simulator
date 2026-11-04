@@ -247,6 +247,25 @@ footer a { color: var(--muted); }
 .dim { color: var(--muted); }
 #l-article .res td { font-variant-numeric: tabular-nums; }
 
+.study-block { font-size: 10px; color: var(--bright); letter-spacing: .08em; text-transform: uppercase; margin: 8px 0 2px; }
+.study-block:first-child { margin-top: 0; }
+.study-block span { display: block; font-size: 9.5px; color: var(--muted); letter-spacing: 0; text-transform: none; font-style: italic; margin-top: 1px; }
+.study-ref { font-size: 10.5px; color: var(--muted); font-style: italic; margin-top: 2px; }
+.content > h3 { margin-top: 2px; color: var(--amber); }
+
+/* CONSORT diagram */
+.cgrid { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 10.5px; }
+.crow { display: flex; align-items: center; gap: 10px; justify-content: center; width: 100%; position: relative; }
+.crow.side { justify-content: center; }
+.cstage { font-size: 9px; letter-spacing: .15em; text-transform: uppercase; color: var(--amber); }
+.cbox { border: 1px solid var(--border-md); padding: 6px 10px; border-radius: 2px; line-height: 1.6; background: var(--surface); max-width: 340px; font-variant-numeric: tabular-nums; }
+.cbox b { font-weight: normal; color: var(--bright); }
+.cbox.excl { border-style: dashed; }
+.carrow { color: var(--muted); text-align: center; }
+.carms { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; width: 100%; max-width: 720px; }
+.ccol { display: flex; flex-direction: column; align-items: stretch; gap: 4px; }
+.ccol .cbox { max-width: none; }
+
 /* ── Responsive ──────────────────────────────────────── */
 @media (max-width: 960px) {
   .view.on { grid-template-columns: 1fr; }
