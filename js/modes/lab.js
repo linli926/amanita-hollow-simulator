@@ -5,13 +5,13 @@
 import { runConfoundingStudy, runCaseControlStudy, randomise, balance, makePopulation, infectionRisk,
   table2x2, riskRatio, toVE, chiSquare2x2, mantelHaenszelRR, orFromRisks, expectedLogOrSE,
   sampleSizeTwoProportions, powerTwoProportions, sampleSizeVELowerBound, powerVELowerBound, AGE_GROUPS,
-  simulatePhase3, phase3Truth, PHASE3 } from '../stats/design.js';
+  simulatePhase3, phase3Truth, PHASE3, trialEpidemic, TRIAL_TIMELINE } from '../stats/design.js';
 import { logistic } from '../stats/regression.js';
 import { makeRng, randomSeed } from '../stats/rng.js';
 import { quantile } from '../stats/dist.js';
 import { COLORS, alpha, niceMax } from '../ui/chart.js';
 import { $, $$, fmt, html, defer } from '../ui/dom.js';
-import { update } from '../state.js';
+import { state, update } from '../state.js';
 import { V, results, BLOCKS, STUDIES, sliderHTML, bind, article, chartPanel, getChart, teX, pct, veStr, forest, signed } from './lab-ui.js';
 import { renderSampling, renderReuse } from './lab-observational.js';
 import { renderConduct } from './lab-trials.js';
@@ -419,56 +419,122 @@ function drawSampleSize() {
 
 function newHidden() {
   const rng = makeRng(randomSeed());
-  hidden = { ve: Math.round(rng.range(0.45, 0.85) * 100) / 100, p0: Math.round(rng.range(0.025, 0.065) * 1000) / 1000, elderlyFactor: 0.75, seed: randomSeed() };
+  hidden = { ve: Math.round(rng.range(0.45, 0.85) * 100) / 100, elderlyFactor: 0.75, p0: 0.05 };
 }
 
-export function approvalWeek(nPerArm) { return 3 + Math.ceil((2 * nPerArm) / 3000); }
+/** The outbreak the trial runs in: the pathogen released in mode I, if it can spread. */
+function currentOutbreak() {
+  const o = state.outbreak;
+  return o && o.R0 * (1 - o.immune) > 1 ? o : null;
+}
+
+/** Recompute where the trial sits on the epidemic curve and the placebo-arm risk it implies. */
+function updateEpidemic() {
+  const E = trialEpidemic(currentOutbreak(), V.trialStart, V.nArm);
+  hidden.p0 = E.p0;
+  results.p3epi = E;
+  return E;
+}
 
 function renderPhase3() {
   const s = STUDIES.find(x => x.id === 'phase3');
   if (!hidden) newHidden();
-  const plan = sampleSizeVELowerBound(V.p0, V.veExp, 0.3, V.power);
+  let E = updateEpidemic();
+  if (V.nArm > E.maxPerArm) { V.nArm = E.maxPerArm; E = updateEpidemic(); }
   html('l-controls', `<div class="sec-head">Trial protocol</div>
-    ${sliderHTML('l4-n', 'Participants per arm', 200, 12000, 100, V.nArm)}
+    ${sliderHTML('l4-start', 'Trial starts on day', TRIAL_TIMELINE.earliestStart, 140, 7, V.trialStart, `Day 0 = the flood. The first doses exist from day ${TRIAL_TIMELINE.earliestStart}.`)}
+    ${sliderHTML('l4-n', 'Participants per arm', 100, 12000, 100, Math.min(V.nArm, E.maxPerArm), '')}
+    <div class="param-hint" id="l4-max" style="margin-top:-6px;margin-bottom:8px"></div>
     <div class="param"><div class="param-top"><span>Randomisation</span></div>
       <div class="seg" id="l4-scheme">${SCHEMES.map(([id, label]) => `<button data-s="${id}" class="${V.scheme === id ? 'on' : ''}">${label.replace(' (4)', '')}</button>`).join('')}</div></div>
-    <div class="note" style="margin-top:4px">Planning assumptions from the sample-size case study: attack rate ${pct(V.p0, 1)}, VE ${pct(V.veExp)}, power ${pct(V.power)} → <em>${isFinite(plan) ? fmt.int(plan) : '∞'} per arm</em>. <button class="link-btn" id="l4-use">Use this</button></div>
-    <div class="note" id="l4-time" style="margin-top:6px"></div>
+    <div class="note" id="l4-plan" style="margin-top:4px"></div>
     <button class="btn btn-green" id="l4-run" style="margin-top:10px">▶ RUN THE PHASE III TRIAL</button>
     <button class="btn" id="l4-new">⟳ NEW CANDIDATE (UNKNOWN TRUTH)</button>`);
   html('l-article', article(s, `
     <div class="study-grid">
-      <div><h3>Question</h3><p>Does the Sporeford vaccine meet the licensing standard: a point estimate of efficacy of at least 50% with a lower 95% confidence bound above 30%?</p></div>
-      <div><h3>Design</h3><p>Individually randomised, placebo-controlled, 1:1, with your chosen scheme. Primary endpoint: laboratory-confirmed symptomatic infection over one season. The true efficacy and the season's attack rate are unknown to you. Efficacy is also somewhat lower in residents aged 65+, as is common for vaccines (immunosenescence). Bigger trials take longer to enrol, which delays the rollout.</p></div>
+      <div><h3>Question</h3><p>Does the Sporeford vaccine meet the licensing standard: a point estimate of efficacy of at least 50% with a lower 95% confidence bound above 30%? Only a licensed vaccine may be given to the villagers.</p></div>
+      <div><h3>Design</h3><p>The trial runs in the Hollow <em>during the outbreak</em>: individually randomised, placebo-controlled, 1:1. Each participant is followed for ${TRIAL_TIMELINE.followUpDays / 7} weeks for symptomatic, lab-confirmed Amanita illness. How many endpoints occur depends on where the trial sits on the epidemic curve. The true efficacy is unknown to you, and lower in residents aged 65+ (immunosenescence).</p></div>
+    </div>
+    <div class="grid-2">
+      ${chartPanel('l4-epi', 'Your outbreak and the trial window', 'infectious residents over time · shaded = enrolment + follow-up')}
+      <div class="panel"><div class="panel-head"><div class="panel-title">Timeline</div><div class="panel-sub" id="l4-epi-src"></div></div><div id="l4-timeline"></div></div>
     </div>
     <div id="l4-out"><div class="note">Set the protocol and run the trial.</div></div>
     <details class="methods"><summary>▸ METHODS</summary><div class="method-grid">
+      <div><h4>Attack rate from the epidemic</h4><div class="tex" data-tex="r_0=\\phi\\cdot\\frac{1}{|T|}\\sum_{t\\in T}\\frac{C(t+42)-C(t)}{S(t)}" data-display="1"></div><p>C = cumulative infections and S = susceptibles from the SEIRD model of your outbreak; T = enrolment days; φ = ${pct(TRIAL_TIMELINE.endpointFraction)} of infections cause the endpoint illness. Previously infected residents are screened out.</p></div>
       <div><h4>Primary analysis</h4><div class="tex" data-tex="\\widehat{\\text{VE}}=1-\\frac{a/n_1}{c/n_0},\\quad \\text{CI from }\\log\\widehat{\\text{RR}}\\pm 1.96\\,\\text{SE}" data-display="1"></div><p>Intention-to-treat, Pearson χ² test, and an age-stratified Mantel–Haenszel estimate as a sensitivity analysis.</p></div>
       <div><h4>Reporting</h4><p>Participant flow follows the CONSORT 2010 statement: screening, exclusions with reasons, allocation, receipt of the intervention, losses to follow-up and the analysed population per arm.</p><p class="cite">Schulz, Altman &amp; Moher (2010)</p></div>
-      <div><h4>Subgroups</h4><p>VE by age band with 95% CIs. Subgroup CIs are wide, and a trial powered for the overall effect is rarely powered for interactions.</p></div>
-      <div><h4>Link to Outbreak Response</h4><p>A licensed vaccine becomes available in week ${approvalWeek(V.nArm)} instead of week 8, with the true efficacy. Without a licence the unproven batch arrives in week 8 with 50% efficacy.</p></div>
+      <div><h4>Link to Outbreak Response</h4><p>Only a licensed vaccine reaches the villagers, from the week of the licensing decision, with its true efficacy. A failed or late trial leaves the valley without a vaccine.</p></div>
     </div></details>`));
-  const timeNote = () => html('l4-time', `Enrolment of ${fmt.int(2 * V.nArm)} people → vaccine available in Outbreak Response from <em>week ${approvalWeek(V.nArm)}</em> if licensed.`);
-  bind('l4-n', 'nArm', fmt.int, timeNote);
-  timeNote();
+  const refresh = () => {
+    let E2 = updateEpidemic();
+    const nEl = $('#l4-n');
+    nEl.max = E2.maxPerArm;
+    if (V.nArm > E2.maxPerArm) { V.nArm = E2.maxPerArm; nEl.value = V.nArm; $('#l4-n-val').textContent = fmt.int(V.nArm); E2 = updateEpidemic(); }
+    drawTrialEpidemic(E2);
+  };
+  bind('l4-start', 'trialStart', v => 'day ' + v, refresh);
+  bind('l4-n', 'nArm', fmt.int, refresh);
+  $('#l4-n').max = E.maxPerArm;
   $$('#l4-scheme button').forEach(b => b.addEventListener('click', () => { V.scheme = b.dataset.s; $$('#l4-scheme button').forEach(x => x.classList.toggle('on', x === b)); }));
-  $('#l4-use').addEventListener('click', () => { if (isFinite(plan)) { V.nArm = Math.min(12000, Math.max(200, Math.round(plan / 100) * 100)); renderPhase3(); teX(); } });
   $('#l4-run').addEventListener('click', runPhase3);
-  $('#l4-new').addEventListener('click', () => { newHidden(); results.p3 = null; renderPhase3(); teX(); toast('New vaccine candidate. Its true efficacy is unknown.'); });
+  $('#l4-new').addEventListener('click', () => { newHidden(); results.p3 = null; results.p3revealed = false; renderPhase3(); teX(); toast('New vaccine candidate. Its true efficacy is unknown.'); });
+  drawTrialEpidemic(E);
   if (results.p3) drawPhase3();
+}
+
+function drawTrialEpidemic(E) {
+  const tr = E.traj, N = E.outbreak.N;
+  const xmax = Math.max(120, Math.min(400, E.decisionDay + 30));
+  const xs = tr.days.slice(0, xmax + 1), ys = tr.I.slice(0, xmax + 1).map(v => v / N);
+  const ymax = niceMax(Math.max(...ys) * 1.1);
+  getChart('l4-epi').render(c => {
+    c.axes({ xMin: 0, xMax: xmax, yMin: 0, yMax: ymax, xFmt: v => 'd' + Math.round(v), yFmt: v => Math.round(v * 100) + '%', yTicks: 4, xTicks: 6, xLabel: 'days since the flood' });
+    const { ctx } = c;
+    ctx.fillStyle = 'rgba(95,179,122,0.10)';
+    ctx.fillRect(c.X(V.trialStart), c.pad.top, c.X(E.windowEnd) - c.X(V.trialStart), c.ph);
+    ctx.fillStyle = 'rgba(95,179,122,0.10)';
+    ctx.fillRect(c.X(V.trialStart), c.pad.top, c.X(V.trialStart + E.enrolDays) - c.X(V.trialStart), c.ph);
+    c.area(xs, ys, { color: 'rgba(192,57,43,0.10)' });
+    c.line(xs, ys, { color: COLORS.I, width: 2 });
+    c.vline(V.trialStart, { color: COLORS.R, dash: [3, 3], label: 'start', labelY: 10 });
+    c.vline(E.decisionDay, { color: COLORS.obs, dash: [3, 3], label: `licence decision · week ${E.approvalWeek}`, labelY: 34, align: E.decisionDay > xmax * 0.7 ? 'right' : 'left' });
+  }, x => { const d = Math.round(x); return tr.I[d] === undefined ? null : [{ text: `Day ${d} (week ${Math.floor(d / 7) + 1})` }, { text: `infectious ${pct(tr.I[d] / N, 1)}`, color: COLORS.I }]; });
+  html('l4-epi-cap', 'Darker band = enrolment, lighter band = remaining follow-up.');
+  html('l4-epi-src', E.isDefault ? 'reference outbreak · release your own pathogen in mode I' : 'the pathogen you released in mode I');
+  const o = E.outbreak;
+  const plan = sampleSizeVELowerBound(E.attack, V.veExp, 0.3, V.power);
+  const feasible = isFinite(plan) && plan <= E.maxPerArm;
+  html('l4-timeline', `<table class="res">
+      <tr><td>Pathogen</td><td class="r">R₀ ${o.R0.toFixed(1)} · latent ${o.latent} d · infectious ${o.infectious} d · N ${fmt.int(o.N)}</td></tr>
+      <tr><td>Enrolment</td><td class="r">days ${V.trialStart}–${V.trialStart + E.enrolDays} (${fmt.int(2 * V.nArm)} people)</td></tr>
+      <tr><td>Follow-up ends · licence decision</td><td class="r">day ${E.windowEnd} · day ${E.decisionDay}</td></tr>
+      <tr><td>Placebo-arm risk of the endpoint</td><td class="r" style="color:var(--bright)">${pct(E.attack, 2)}</td></tr>
+      <tr><td>Expected endpoint cases (placebo arm)</td><td class="r">${fmt.int(E.attack * V.nArm)}</td></tr>
+      <tr><td>Vaccine reaches villagers if licensed</td><td class="r" style="color:${E.approvalWeek <= 20 ? 'var(--green-bright)' : 'var(--red-bright)'}">week ${E.approvalWeek}${E.approvalWeek > 20 ? ' · after the 20-week response campaign ends' : ''}</td></tr>
+    </table>
+    <div class="interp" style="margin-top:8px"><p>${V.trialStart + E.enrolDays > (tr.I.indexOf(Math.max(...tr.I)) + 14) && E.attack < 0.02
+      ? 'The trial starts after the epidemic has peaked, so few participants are exposed and few endpoints occur. This is the real-world problem that hit the Ebola and Zika vaccine trials: by the time a trial is ready, transmission may be fading.'
+      : 'Transmission is still intense during follow-up, so endpoints accrue quickly and a modest trial can answer the question. Starting later means fewer cases but more time for development.'}</p></div>`);
+  html('l4-plan', `Sample size for the licence criterion with this attack rate (${pct(E.attack, 2)}), expected VE ${pct(V.veExp)} and power ${pct(V.power)} (assumptions from the sample-size case study): <em>${isFinite(plan) ? fmt.int(plan) : '∞'} per arm</em>. ` +
+    (feasible ? `<button class="link-btn" id="l4-use">Use this</button>` : `<span class="bad">More than the ${fmt.int(E.maxPerArm)} per arm the valley can supply: start earlier.</span>`));
+  html('l4-max', `At most ${fmt.int(E.maxPerArm)} per arm: ${pct(TRIAL_TIMELINE.maxShare, 0)} of residents still susceptible on day ${V.trialStart}.`);
+  $('#l4-use')?.addEventListener('click', () => { V.nArm = Math.min(E.maxPerArm, Math.max(100, Math.ceil(plan / 100) * 100)); renderPhase3(); teX(); });
 }
 
 async function runPhase3() {
   const btn = $('#l4-run'); btn.disabled = true; btn.textContent = '▶ ENROLLING…';
-  results.p3 = await defer(() => ({ ...simulatePhase3(hidden, V.nArm, V.scheme, makeRng(randomSeed())), nArm: V.nArm, scheme: V.scheme }));
+  const E = updateEpidemic();
+  results.p3revealed = false;
+  results.p3 = await defer(() => ({ ...simulatePhase3(hidden, V.nArm, V.scheme, makeRng(randomSeed())), nArm: V.nArm, scheme: V.scheme, approvalWeek: E.approvalWeek, attack: E.attack }));
   btn.disabled = false; btn.textContent = '▶ RUN THE PHASE III TRIAL';
   drawPhase3();
   const P = results.p3, ve = toVE(P.rr);
   const licensed = ve.est >= 0.5 && ve.lo > 0.3;
   if (licensed) {
-    update({ vaccine: { ve: phase3Truth(hidden).vaccinatedVE, est: ve.est, lo: ve.lo, hi: ve.hi, week: approvalWeek(P.nArm) } });
-    toast(`Licensed. VE ${pct(ve.est, 1)} (95% CI ${pct(ve.lo, 0)}–${pct(ve.hi, 0)}). The vaccine reaches Outbreak Response in week ${approvalWeek(P.nArm)}.`);
-  } else toast(`Not licensed: VE ${pct(ve.est, 1)}, lower bound ${pct(ve.lo, 1)}.`);
+    update({ vaccine: { ve: phase3Truth(hidden).vaccinatedVE, est: ve.est, lo: ve.lo, hi: ve.hi, week: P.approvalWeek } });
+    toast(`Licensed. VE ${pct(ve.est, 1)} (95% CI ${pct(ve.lo, 0)}–${pct(ve.hi, 0)}). Villagers can be vaccinated from week ${P.approvalWeek}.`);
+  } else toast(`Not licensed: VE ${pct(ve.est, 1)}, lower bound ${pct(ve.lo, 1)}. The villagers get no vaccine.`);
 }
 
 function drawPhase3() {

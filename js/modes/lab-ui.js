@@ -19,7 +19,7 @@ export const V = {
   // 6 · trial conduct
   nArm6: 3000, refusal: 0.25, refusalOR: 4, ve6: 0.7, p06: 0.05, K: 5, veSeq: 0, nSeq: 3000,
   // 7 · Phase III
-  nArm: 2500, scheme: 'stratified',
+  nArm: 1000, scheme: 'stratified', trialStart: 28,
 };
 
 export const BLOCKS = [

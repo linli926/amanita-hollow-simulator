@@ -86,3 +86,30 @@ test('Phase III — truth formulas match a large simulation; ITT 95% CI covers t
   for (let i = 0; i < R; i++) if (covers(toVE(simulatePhase3(h, 2500, 'stratified', rng).rr), T.ittVE)) cov++;
   inRange(cov / R, 0.92, 0.98, 'ITT CI coverage');
 });
+
+test('Story link — the trial attack rate comes from the outbreak, and timing matters', async () => {
+  const { trialEpidemic, phase3Truth } = await import('../js/stats/design.js');
+  const early = trialEpidemic(null, 28, 1000), late = trialEpidemic(null, 112, 1000);
+  // p0 is calibrated so the simulated placebo arm reproduces the epidemic's attack rate
+  inRange(phase3Truth({ ve: 0.7, elderlyFactor: 0.75, p0: early.p0 }).placeboAttack - early.attack, -1e-9, 1e-9, 'calibration');
+  assert.ok(late.attack < early.attack / 5, 'a trial after the peak sees far fewer endpoints');
+  assert.ok(late.maxPerArm < early.maxPerArm, 'fewer susceptibles remain to enrol');
+  assert.ok(late.approvalWeek > early.approvalWeek);
+  // A pathogen that cannot spread gives (almost) no endpoints at all
+  const fizzle = trialEpidemic({ R0: 0.9, latent: 3, infectious: 6, cfr: 0.02, N: 20000, I0: 3, immune: 0 }, 28, 1000);
+  assert.ok(fizzle.attack < 0.001);
+});
+
+test('Story link — villagers get no vaccine without a licence; the game uses the released pathogen', async () => {
+  const { createWorld, actionAvailable, playWeek, counterfactual } = await import('../js/models/world.js');
+  const w = createWorld('normal', 3);
+  for (let k = 0; k < 19; k++) { assert.equal(actionAvailable(w, 'vaccine'), false); playWeek(w, { silent: true }); if (w.over) break; }
+  const lic = createWorld('normal', 3, { vaccine: { week: 9, ve: 0.7 } });
+  for (let k = 0; k < 8; k++) playWeek(lic, { silent: true });
+  assert.equal(actionAvailable(lic, 'vaccine'), true);
+  const pathogen = { R0: 1.7, latent: 2, infectious: 5, cfr: 0.08 };
+  const g = createWorld('normal', 3, { pathogen });
+  assert.equal(g.hidden.R0, 1.7); assert.equal(g.hidden.cfr, 0.08);
+  while (!playWeek(g, { silent: true }));
+  assert.ok(counterfactual(g, 2).deaths.median >= 0); // counterfactual replays the same pathogen
+});

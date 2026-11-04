@@ -8,6 +8,7 @@
 //  • Sample size / power for two proportions and for a VE lower-bound criterion
 
 import { normCdf, normInv, chi2Sf } from './dist.js';
+import { simulateSEIRD } from '../models/ode.js';
 
 const Z975 = 1.959963984540054;
 const logit = p => Math.log(p / (1 - p));
@@ -349,5 +350,55 @@ export function simulatePhase3(h, nPerArm, scheme, rng) {
   return {
     t, strata, consort, n, rr: safeRR(t), mh: mantelHaenszelRR(strata), test: chiSquare2x2(t), sub: strata.map(safeRR),
     old: [rows.filter(r => r.vax && r.ag === 2).length, rows.filter(r => !r.vax && r.ag === 2).length],
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// The Phase III trial runs inside the outbreak
+
+export const TRIAL_TIMELINE = {
+  earliestStart: 28,      // days after the flood before trial doses exist
+  enrolPerWeek: 3000,     // participants the clinics can enrol each week
+  followUpDays: 42,       // each participant is followed for 6 weeks
+  reviewDays: 7,          // analysis and licensing decision
+  maxShare: 0.6,          // at most 60% of still-susceptible residents can be enrolled
+  endpointFraction: 0.25, // share of infections that cause symptomatic, lab-confirmed illness (the endpoint)
+};
+
+/** Pathogen used when no outbreak has been released in Outbreak Architect. */
+export const DEFAULT_OUTBREAK = { R0: 2.5, latent: 3, infectious: 6, cfr: 0.03, N: 20000, I0: 3, immune: 0 };
+
+/**
+ * Where the trial sits on the epidemic curve. Participants are enrolled uniformly from
+ * `startDay` over the enrolment period and followed for 6 weeks; their placebo-arm risk is the
+ * probability that a still-susceptible resident is infected during their own follow-up window,
+ * (C(t + 42) − C(t)) / S(t), averaged over enrolment days t (C = cumulative infections),
+ * times the share of infections that produce the trial endpoint.
+ * Returns that attack rate, the corresponding p0 for simulatePhase3, and the licensing week.
+ */
+export function trialEpidemic(outbreak, startDay, nPerArm) {
+  const T = TRIAL_TIMELINE;
+  const o = outbreak ?? DEFAULT_OUTBREAK;
+  const traj = simulateSEIRD({ ...o, days: 400, dt: 0.25 });
+  const enrolDays = Math.max(1, Math.ceil((2 * nPerArm) / T.enrolPerWeek * 7));
+  let risk = 0, k = 0;
+  for (let t = startDay; t < startDay + enrolDays && t + T.followUpDays < traj.days.length; t++) {
+    risk += (traj.cumInc[t + T.followUpDays] - traj.cumInc[t]) / Math.max(1, traj.S[t]);
+    k++;
+  }
+  const infectionRisk = k ? risk / k : 0;
+  const attack = infectionRisk * T.endpointFraction;
+  const P = PHASE3;
+  const ru = P.pAge.reduce((s2, pa, ag) => s2 + pa * P.riskByAge[ag], 0);
+  const meanExposure = P.pCaution * P.cautionEffect + (1 - P.pCaution);
+  const p0 = Math.min(0.66, attack / (ru * meanExposure)); // keeps every individual risk below 1
+  const decisionDay = startDay + enrolDays + T.followUpDays + T.reviewDays;
+  return {
+    traj, enrolDays, attack, infectionRisk, p0, capped: p0 >= 0.66,
+    windowEnd: startDay + enrolDays + T.followUpDays,
+    decisionDay,
+    approvalWeek: Math.floor(decisionDay / 7) + 1,
+    maxPerArm: Math.max(100, Math.floor(T.maxShare * traj.S[Math.min(startDay, traj.S.length - 1)] / 2 / 100) * 100),
+    outbreak: o, isDefault: !outbreak,
   };
 }

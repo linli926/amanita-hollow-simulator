@@ -23,8 +23,6 @@ export const DIFFICULTY = {
 
 export const WEEKS = 20;
 export const MOBILITY = 0.08;
-export const VACCINE_WEEK = 8;          // unlicensed batch, if no Phase III trial succeeded
-export const UNLICENSED_VE = 0.5;
 export const COMPASSIONATE_WEEK = 10;
 const OVERLOAD = 0.03; // prevalence above which a village's wards overflow
 
@@ -32,7 +30,7 @@ export const ACTIONS = {
   lockdown: { label: 'Lockdown', hint: 'transmission −60%', cost: v => Math.round(v.N / 1000 * 1.2 * 10) / 10 },
   travel: { label: 'Travel ban', hint: 'outside contact −85%', cost: () => 2 },
   test: { label: 'Test & isolate', hint: 'transmission −25%, reporting 80%', cost: v => Math.round(v.N / 1000 * 0.6 * 10) / 10 },
-  vaccine: { label: 'Vaccinate', hint: '2% of residents per day', cost: () => 6, unlock: VACCINE_WEEK },
+  vaccine: { label: 'Vaccinate', hint: '2% of residents per day', cost: () => 6 }, // only once licensed (Vaccine Lab)
 };
 export const TREATMENT_COST = 8;
 
@@ -47,6 +45,12 @@ export function createWorld(difficulty = 'normal', seed = 1, opts = {}) {
     infectious: setup.pick([4, 5, 6, 7]),
     cfr: Math.round(setup.range(...D.cfr) * 1000) / 1000,
   };
+  // The pathogen designed in Outbreak Architect, if any, replaces the random one.
+  // (The draws above still happen so seeding and events stay identical.)
+  if (opts.pathogen) {
+    const p = opts.pathogen;
+    Object.assign(hidden, { R0: p.R0, latent: Math.max(1, p.latent), infectious: p.infectious, cfr: p.cfr });
+  }
   const seedVillage = setup.int(1, VILLAGES.length - 1); // never starts in the town itself
   const types = setup.shuffle(EVENT_TYPES.slice()).slice(0, 4);
   const weeks = setup.shuffle([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]).slice(0, 4).sort((a, b) => a - b);
@@ -55,8 +59,10 @@ export function createWorld(difficulty = 'normal', seed = 1, opts = {}) {
   const world = {
     seed, difficulty, hidden, seedVillage, events, villages,
     treatmentHR: opts.treatmentHR ?? null,
-    vaccineWeek: opts.vaccine?.week ?? VACCINE_WEEK,
-    vaccineEff: opts.vaccine?.ve ?? UNLICENSED_VE,
+    pathogen: opts.pathogen ?? null,
+    // No vaccine reaches the villages until a Phase III trial has licensed it.
+    vaccineWeek: opts.vaccine?.week ?? Infinity,
+    vaccineEff: opts.vaccine?.ve ?? 0,
     rng: makeRng(seed ^ 0x2545f491),
     state: metapopInit(villages, seedVillage, D.seeds),
     day: 0, week: 0,
@@ -220,7 +226,7 @@ export function totals(world) {
 export function counterfactual(world, nRep = 30) {
   const deaths = [], infections = [];
   for (let r = 0; r < nRep; r++) {
-    const w = createWorld(world.difficulty, world.seed, { treatmentHR: null });
+    const w = createWorld(world.difficulty, world.seed, { treatmentHR: null, pathogen: world.pathogen });
     w.rng = makeRng((world.seed ^ 0x2545f491) + 7919 * (r + 1));
     while (!playWeek(w, { silent: true }));
     const t = totals(w);

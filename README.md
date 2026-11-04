@@ -12,6 +12,14 @@ A flood has torn open a cavern beneath the valley of **Amanita Hollow**, releasi
 | **V · Vaccine Lab** | the study designer | Four core case studies (three advanced ones are implemented but hidden for now) in two blocks, mapped to Reilly, *Controlled Epidemiological Studies* and Hackshaw, *A Concise Guide to Clinical Trials* | Confounding and Mantel–Haenszel stratification; case–control with logistic regression (IRLS) and the test-negative design; nested case–control (risk-set sampling, conditional logistic regression) vs case–cohort (Barlow-weighted Cox, robust variance) vs full cohort; reusing case–control data for a secondary outcome (IPW); ITT vs per-protocol vs as-treated vs CACE; group-sequential monitoring (Pocock, O'Brien–Fleming); simple vs block vs stratified randomisation; sample size and power for VE > 0 and for the licensure criterion (lower bound > 30%); Phase III trial with subgroup analysis and a CONSORT flow diagram |
 | **IV · Outbreak Response** | the commander | Run a 20-week campaign across six villages on a budget: lockdowns, travel bans, test & isolate, vaccines, and treatment if your trial succeeded | Stochastic metapopulation SEIRD, gravity-model mobility, next-generation matrix Rₜ (power iteration), counterfactual replicates for grading |
 
+**One story, one pathogen.** The modes follow a real outbreak response, and each step is a core biostatistics skill:
+
+1. **Model** the epidemic (I): the pathogen you design here is the one used everywhere else.
+2. **Estimate** R₀ from noisy surveillance data (II).
+3. **Test** a treatment in a survival-analysis trial (III).
+4. **Design** a vaccine trial that runs *during* the outbreak (V). Its placebo-arm attack rate is computed from your epidemic curve, so a trial that starts after the peak sees few cases and cannot reach its licensing criterion (the problem the Ebola and Zika vaccine trials faced).
+5. **Respond** (IV). Villagers can be vaccinated only after the Phase III trial licenses the vaccine, from the week of the licensing decision.
+
 The modes are linked. The pathogen you release in I becomes the case file in II. A significant trial in III unlocks treatment in IV, with the true hazard ratio you set. A Phase III vaccine trial in V that meets the licensure criterion brings the vaccine to IV earlier (larger trials take longer to enrol), with its true population-average efficacy; otherwise only an unproven batch arrives in week 8.
 
 ## Run it
