@@ -16,9 +16,9 @@ export const VILLAGES = [
 ];
 
 export const DIFFICULTY = {
-  easy: { R0: [1.8, 2.3], cfr: [0.012, 0.02], budget: 300, seeds: 2 },
-  normal: { R0: [2.2, 2.9], cfr: [0.02, 0.03], budget: 180, seeds: 3 },
-  hard: { R0: [2.8, 3.6], cfr: [0.03, 0.045], budget: 120, seeds: 4 },
+  easy: { R0: [1.8, 2.3], cfr: [0.012, 0.02], budget: 500, seeds: 2 },
+  normal: { R0: [2.2, 2.9], cfr: [0.02, 0.03], budget: 350, seeds: 3 },
+  hard: { R0: [2.8, 3.6], cfr: [0.03, 0.045], budget: 275, seeds: 4 },
 };
 
 export const WEEKS = 20;
