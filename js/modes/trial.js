@@ -1,6 +1,6 @@
 // Mode III — Clinical Trial: design, run and analyse a randomised survival study.
 
-import { simulateTrial, kaplanMeier, kmMedian, nelsonAalen, logRank, coxPH, concordance,
+import { simulateTrial, marginalHR, kaplanMeier, kmMedian, nelsonAalen, logRank, coxPH, concordance,
   schoenfeldEvents, schoenfeldPower, expectedEventFraction, simulatePower, atRisk } from '../stats/survival.js';
 import { makeRng, randomSeed } from '../stats/rng.js';
 import { Chart, COLORS, alpha } from '../ui/chart.js';
@@ -11,6 +11,7 @@ let km, side, sideTab;
 let get = {};
 let R = null;      // last trial result
 let powerSim = null;
+let marginalCache = { key: null, hr: null }; // large-sample unadjusted HR for the current settings
 let toast;
 let designTimer = 0;
 
@@ -125,8 +126,10 @@ function run() {
   const coxU = coxPH(times, events, patients.map(p => [p.trt]), ['Volvarin']);
   const coxA = coxPH(times, events, patients.map(p => [p.trt, (p.age - 55) / 10, p.comorb]), ['Volvarin', 'Age (+10 y)', 'Comorbidity']);
   const cIndex = concordance(times, events, coxA.linearPredictor);
+  const key = JSON.stringify({ ...o, n: 0 });
+  if (marginalCache.key !== key) marginalCache = { key, hr: marginalHR(o, makeRng(2468)) };
   R = {
-    o, patients, km0, km1, lr, coxU, coxA, cIndex,
+    o, patients, km0, km1, lr, coxU, coxA, cIndex, marginal: marginalCache.hr,
     med0: kmMedian(km0), med1: kmMedian(km1),
     na0: nelsonAalen(g0.times, g0.events), na1: nelsonAalen(g1.times, g1.events),
     g0, g1,
@@ -186,7 +189,9 @@ function drawSide(tab = sideTab()) {
   const cap = $('#t-side-caption');
   if (tab === 'forest') {
     const rows = [...R.coxA.coefs, { ...R.coxU.coefs[0], name: 'Volvarin (unadj.)' }];
-    const truth = { 'Volvarin': R.o.hr, 'Age (+10 y)': R.o.hrAgePer10, 'Comorbidity': R.o.hrComorb, 'Volvarin (unadj.)': R.o.hr };
+    // Adjusted rows estimate conditional HRs (the values set in the sidebar). The unadjusted row
+    // estimates the marginal HR, which is closer to 1 because the Cox model is non-collapsible.
+    const truth = { 'Volvarin': R.o.hr, 'Age (+10 y)': R.o.hrAgePer10, 'Comorbidity': R.o.hrComorb, 'Volvarin (unadj.)': R.marginal };
     const lo = Math.min(0.2, ...rows.map(r => r.lo)) * 0.9, hi = Math.max(5, ...rows.map(r => r.hi)) * 1.1;
     side.render(c => {
       c.ctx.font = '12px "IBM Plex Mono", monospace';
@@ -201,8 +206,12 @@ function drawSide(tab = sideTab()) {
         c.marks([truth[r.name]], [y], { shape: 'cross', color: COLORS.truth, size: 4, width: 1 });
         c.text(r.name, c.pad.left - 8, c.Y(y) + 3, { px: true, align: 'right', color: COLORS.text });
       });
-    }, x => [{ text: `HR = ${x.toFixed(2)}` }, { text: '× = true value', color: COLORS.truth }]);
-    cap.textContent = `Cox PH (Breslow) · ● estimate with 95% Wald CI · × true HR · C-index ${R.cIndex.toFixed(3)}. Adjusting for prognostic covariates sharpens the treatment estimate.`;
+    }, x => [{ text: `HR = ${x.toFixed(2)}` }, { text: '+ = true value this row estimates', color: COLORS.truth }]);
+    cap.textContent = `Cox PH (Breslow) · ● estimate with 95% Wald CI · + true value · C-index ${R.cIndex.toFixed(3)}. ` +
+      `The adjusted rows estimate conditional HRs, whose true values are the ones set in the sidebar (Volvarin ${R.o.hr.toFixed(2)}). ` +
+      `The unadjusted row estimates a different quantity, the marginal HR (≈ ${R.marginal.toFixed(2)} here, from one very large simulated trial). ` +
+      `It is closer to 1 because the Cox model is non-collapsible: leaving out prognostic factors dilutes the treatment HR even though randomisation balances them. ` +
+      `So adjusting for prognostic covariates moves the estimate away from 1 and usually increases power. It does not necessarily narrow the confidence interval.`;
   } else if (tab === 'loglog') {
     const pts = k => k.curve.filter(p => p.t > 0 && p.s > 0 && p.s < 1).map(p => ({ x: p.t, y: Math.log(-Math.log(p.s)) }));
     const a = pts(R.km0), b = pts(R.km1);

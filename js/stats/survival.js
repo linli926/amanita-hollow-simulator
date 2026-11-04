@@ -296,3 +296,15 @@ export function simulatePower(o, rng, nTrials = 200, alpha = 0.05) {
   }
   return { power: reject / nTrials, powerBeneficial: rejectRight / nTrials, nTrials };
 }
+
+/**
+ * The value an UNADJUSTED Cox model converges to under this design: the marginal hazard ratio.
+ * Because the Cox model is non-collapsible, leaving out prognostic covariates (age, comorbidity)
+ * pulls the treatment HR towards 1 even though randomisation makes them independent of treatment.
+ * There is no closed form (it also depends on follow-up and censoring), so it is estimated from
+ * one very large simulated trial with the same settings.
+ */
+export function marginalHR(o, rng, n = 40000) {
+  const { patients } = simulateTrial({ ...o, n }, rng);
+  return coxPH(patients.map(p => p.time), patients.map(p => p.event), patients.map(p => [p.trt])).coefs[0].hr;
+}

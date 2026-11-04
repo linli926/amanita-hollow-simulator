@@ -100,3 +100,12 @@ test('Cori Rt is ~R0 during exponential growth', () => {
   const late = rt.filter(r => r.t > 40);
   late.forEach(r => close(r.mean, 2, 0.15, `t=${r.t}`));
 });
+
+test('non-collapsibility: the unadjusted Cox HR is closer to 1 when prognostic covariates matter', async () => {
+  const { marginalHR } = await import('../js/stats/survival.js');
+  const base = { hr: 0.6, controlMortality: 0.4, shape: 1.2, followUpDays: 60, accrualDays: 30, dropoutRate: 0 };
+  const none = marginalHR({ ...base, hrAgePer10: 1, hrComorb: 1 }, makeRng(1), 30000);
+  close(none, 0.6, 0.03, 'no prognostic factors: marginal = conditional');
+  const strong = marginalHR({ ...base, hrAgePer10: 1.8, hrComorb: 4 }, makeRng(2), 30000);
+  assert.ok(strong > 0.64, `marginal HR ${strong.toFixed(3)} should be pulled towards 1`);
+});
