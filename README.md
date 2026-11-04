@@ -22,6 +22,21 @@ A flood has torn open a cavern beneath the valley of **Amanita Hollow**, releasi
 
 The modes are linked. The pathogen you release in I becomes the case file in II. A significant trial in III unlocks treatment in IV, with the true hazard ratio you set. A Phase III vaccine trial in V that meets the licensure criterion brings the vaccine to IV earlier (larger trials take longer to enrol), with its true population-average efficacy; otherwise only an unproven batch arrives in week 8.
 
+## Names in the Hollow
+
+Every place name is invented, and most are built from the anatomy of an *Amanita* mushroom combined with a common English place-name element. Put together, the villages are one mushroom scattered across the valley.
+
+| Name | Mushroom part | Place-name element | In the game |
+|---|---|---|---|
+| **Amanita Hollow** | *Amanita*, the genus of the fly agaric and the death cap | *hollow*, a small valley | the valley itself |
+| **Sporeford** | spore | *-ford*, a river crossing | market town, transport hub, the only hospital |
+| **Gill's Crossing** | gills, the thin plates under the cap | *crossing* | river ford and trading post |
+| **Ringmere** | ring (annulus), the skirt on the stem | *-mere*, Old English for lake | lake village |
+| **Capstone** | cap (pileus) | *capstone*, a top stone | quarry town in the hills |
+| **Veil Hollow** | veil, the membrane around a young mushroom | *hollow* | remote hamlet by the cavern mouth |
+| **Mossbank** | moss (not a mushroom part) | *bank*, a slope or riverbank | farming village on the western slope |
+| **Volvarin** | volva, the cup at the base of an *Amanita* stem | drug-name suffix *-in* | the repurposed antifungal tested in mode III |
+
 ## Run it
 
 It is plain static HTML with ES modules: no build step and no dependencies. ES modules don't load from `file://`, so serve the folder:
@@ -117,5 +132,18 @@ tests/                node:test unit tests
 5. **疫情指挥**：六个村庄组成的元种群随机模型，有限预算下做干预决策；用下一代矩阵计算真实 Rₜ，最后和「不干预」的反事实模拟对比打分
 
 所有模式互相联动：模式一释放的病原就是模式二要调查的案件，模式三的试验显著后，模式四才能使用治疗。
+
+### 地名彩蛋
+
+所有地名都是虚构的，大多由**鹅膏菌的身体部位**加上**英语地名的常见词根**组成。把地图上的村庄连起来看，就像把一朵鹅膏菌拆开、散落在山谷里：
+
+- **Amanita Hollow（蘑菇谷）**：Amanita（鹅膏菌属，包括毒蝇伞和死帽菌）+ hollow（山谷）
+- **Sporeford**：spore（孢子）+ -ford（渡口，如 Oxford）。镇中心，有全谷唯一的医院
+- **Gill's Crossing**：gill（菌褶）+ crossing（渡口）
+- **Ringmere**：ring（菌环）+ -mere（古英语的「湖」）
+- **Capstone**：cap（菌盖）+ capstone（顶石）
+- **Veil Hollow**：veil（菌幕）+ hollow（山谷），离孢子源头的洞穴最近
+- **Mossbank**：moss（苔藓，不是蘑菇部位）+ bank（坡地）
+- **Volvarin**（模式三的药）：volva（菌托，鹅膏菌菌柄底部的杯状结构）
 
 *Amanita Hollow is fictional. All outbreaks, patients and villages are simulated.*
