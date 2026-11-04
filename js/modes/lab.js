@@ -118,7 +118,7 @@ function drawConfounding() {
   const cr = r.est.crude;
   html('l1-strata', `<table class="res"><tr><th>Age band</th><th class="r">Vaccinated: cases/n</th><th class="r">Unvaccinated: cases/n</th><th class="r">VE</th></tr>${rowsHTML}
     <tr><td style="color:var(--bright)">All (crude)</td><td class="r">${r.crude.a}/${r.crude.a + r.crude.b} <span class="dim">(${pct(cr.r1, 1)})</span></td><td class="r">${r.crude.c}/${r.crude.c + r.crude.d} <span class="dim">(${pct(cr.r0, 1)})</span></td><td class="r">${pct(1 - cr.est, 0)}</td></tr></table>
-    <p class="dim" style="margin-top:6px;font-size:10.5px">Mantel–Haenszel age-adjusted VE ${veStr(toVE(r.est.ageAdj))}</p>`);
+    <p class="dim" style="margin-top:6px;font-size:13px">Mantel–Haenszel age-adjusted VE ${veStr(toVE(r.est.ageAdj))}</p>`);
 
   const crude = 1 - r.est.crude.est, age = 1 - r.est.ageAdj.est, full = 1 - r.est.fullAdj.est, rct = 1 - r.est.rct.est;
   const ageBias = crude - age, cautBias = age - full;
@@ -341,7 +341,7 @@ function drawRandomisation() {
       allocs[k].forEach((a, i) => {
         ctx.fillStyle = a ? col : 'rgba(185,160,115,0.25)';
         ctx.fillRect(c.X(i) + 1, y, Math.max(1, w - 2), 14);
-        if (ages[i] === 2) { ctx.fillStyle = '#e8dcc4'; ctx.beginPath(); ctx.moveTo(c.X(i) + w / 2, y - 7); ctx.lineTo(c.X(i) + w / 2 - 3, y - 2); ctx.lineTo(c.X(i) + w / 2 + 3, y - 2); ctx.fill(); }
+        if (ages[i] === 2) { ctx.fillStyle = '#f3ead7'; ctx.beginPath(); ctx.moveTo(c.X(i) + w / 2, y - 7); ctx.lineTo(c.X(i) + w / 2 - 3, y - 2); ctx.lineTo(c.X(i) + w / 2 + 3, y - 2); ctx.fill(); }
       });
       const b = balance(ages, allocs[k]);
       c.text(label, c.pad.left - 10, y + 6, { px: true, align: 'right' });
@@ -386,7 +386,7 @@ function drawAllocationStats() {
   };
   html('l3-bal-sub', `${n} participants, 2,000 simulated trials`);
   html('l3-bal', `<table class="res"><tr><th>Scheme</th><th class="r">Mean |n₁−n₀|</th><th class="r">P(&gt;10% gap)</th><th class="r">65+ gap, median</th><th class="r">65+ gap, 95th pct</th></tr>${SCHEMES.map(row).join('')}</table>
-    <p class="dim" style="margin-top:8px;font-size:10.5px;line-height:1.6">Blocking removes arm-size imbalance. Only stratification controls the 65+ share. With ${n} participants, simple randomisation leaves a 65+ gap of ${quantile([...R.simple.old].sort((a, b) => a - b), 0.95).toFixed(0)} points or more in 1 trial in 20. Increase the trial size to see chance imbalance shrink for every scheme.</p>`);
+    <p class="dim" style="margin-top:8px;font-size:13px;line-height:1.6">Blocking removes arm-size imbalance. Only stratification controls the 65+ share. With ${n} participants, simple randomisation leaves a 65+ gap of ${quantile([...R.simple.old].sort((a, b) => a - b), 0.95).toFixed(0)} points or more in 1 trial in 20. Increase the trial size to see chance imbalance shrink for every scheme.</p>`);
 }
 
 function drawSampleSize() {
@@ -411,8 +411,8 @@ function drawSampleSize() {
     <tr><td style="color:${COLORS.guess}">VE &gt; 0 (two-sided α = 0.05)</td><td class="r">${fmt.int(nSup)}</td><td class="r">${fmt.int(2 * nSup)}</td><td class="r">${fmt.int(expCases(nSup))}</td></tr>
     <tr><td style="color:${COLORS.R}">Lower 95% bound &gt; 30%</td><td class="r">${isFinite(nLic) ? fmt.int(nLic) : '∞'}</td><td class="r">${isFinite(nLic) ? fmt.int(2 * nLic) : '∞'}</td><td class="r">${isFinite(nLic) ? fmt.int(expCases(nLic)) : '—'}</td></tr>
   </table>
-  <p class="dim" style="margin-top:8px;font-size:10.5px;line-height:1.6">Power is driven by the number of <em>cases</em>, not participants: halving the attack rate roughly doubles the sample size. Showing the vaccine beats a 30% bar needs ${isFinite(nLic) ? (nLic / nSup).toFixed(1) + '×' : 'far'} more participants than showing it beats placebo. ${ve <= 0.35 ? 'An expected VE this close to 30% makes the licensure criterion almost unreachable.' : ''}</p>
-  <p class="dim" style="font-size:10.5px">These assumptions carry into the Phase III case study.</p>`);
+  <p class="dim" style="margin-top:8px;font-size:13px;line-height:1.6">Power is driven by the number of <em>cases</em>, not participants: halving the attack rate roughly doubles the sample size. Showing the vaccine beats a 30% bar needs ${isFinite(nLic) ? (nLic / nSup).toFixed(1) + '×' : 'far'} more participants than showing it beats placebo. ${ve <= 0.35 ? 'An expected VE this close to 30% makes the licensure criterion almost unreachable.' : ''}</p>
+  <p class="dim" style="font-size:13px">These assumptions carry into the Phase III case study.</p>`);
 }
 
 // ═════════════════════════ Study 4 · Phase III ═════════════════════════
@@ -489,7 +489,10 @@ function drawTrialEpidemic(E) {
   const xs = tr.days.slice(0, xmax + 1), ys = tr.I.slice(0, xmax + 1).map(v => v / N);
   const ymax = niceMax(Math.max(...ys) * 1.1);
   getChart('l4-epi').render(c => {
-    c.axes({ xMin: 0, xMax: xmax, yMin: 0, yMax: ymax, xFmt: v => 'd' + Math.round(v), yFmt: v => Math.round(v * 100) + '%', yTicks: 4, xTicks: 6, xLabel: 'days since the flood' });
+    // choose a tick count whose step is a round number of percentage points (e.g. 15% → 3 ticks of 5%)
+    const NICE = [0.5, 1, 2, 2.5, 5, 10, 20, 25, 50];
+    const yTicks = [4, 5, 3, 6].find(k => NICE.some(n => Math.abs(ymax * 100 / k - n) < 1e-6)) ?? 4;
+    c.axes({ xMin: 0, xMax: xmax, yMin: 0, yMax: ymax, xFmt: v => 'd' + Math.round(v), yFmt: v => +(v * 100).toFixed(1) + '%', yTicks, xTicks: 6, xLabel: 'days since the flood' });
     const { ctx } = c;
     ctx.fillStyle = 'rgba(95,179,122,0.10)';
     ctx.fillRect(c.X(V.trialStart), c.pad.top, c.X(E.windowEnd) - c.X(V.trialStart), c.ph);
@@ -498,7 +501,7 @@ function drawTrialEpidemic(E) {
     c.area(xs, ys, { color: 'rgba(192,57,43,0.10)' });
     c.line(xs, ys, { color: COLORS.I, width: 2 });
     c.vline(V.trialStart, { color: COLORS.R, dash: [3, 3], label: 'start', labelY: 10 });
-    c.vline(E.decisionDay, { color: COLORS.obs, dash: [3, 3], label: `licence decision · week ${E.approvalWeek}`, labelY: 34, align: E.decisionDay > xmax * 0.7 ? 'right' : 'left' });
+    c.vline(E.decisionDay, { color: COLORS.obs, dash: [3, 3], label: `licence decision · week ${E.approvalWeek}`, labelY: 34, align: E.decisionDay > xmax * 0.5 ? 'right' : 'left' });
   }, x => { const d = Math.round(x); return tr.I[d] === undefined ? null : [{ text: `Day ${d} (week ${Math.floor(d / 7) + 1})` }, { text: `infectious ${pct(tr.I[d] / N, 1)}`, color: COLORS.I }]; });
   html('l4-epi-cap', 'Darker band = enrolment, lighter band = remaining follow-up.');
   html('l4-epi-src', E.isDefault ? 'reference outbreak · release your own pathogen in mode I' : 'the pathogen you released in mode I');

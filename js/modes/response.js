@@ -119,7 +119,7 @@ function renderSidebar() {
   const last = rt.at(-1);
   const rtEl = $('#g-rt');
   if (last) {
-    rtEl.innerHTML = `${last.mean.toFixed(2)} <span style="color:var(--muted);font-size:11px">[${last.lo.toFixed(2)}–${last.hi.toFixed(2)}]</span>`;
+    rtEl.innerHTML = `${last.mean.toFixed(2)} <span style="color:var(--muted);font-size:13px">[${last.lo.toFixed(2)}–${last.hi.toFixed(2)}]</span>`;
     rtEl.style.color = last.lo > 1 ? 'var(--red-bright)' : last.hi < 1 ? 'var(--green-bright)' : 'var(--amber)';
   } else { rtEl.textContent = 'insufficient data'; rtEl.style.color = 'var(--muted)'; }
 
@@ -130,7 +130,7 @@ function renderSidebar() {
   const dth = hist.reduce((s, h) => s + h.newDeaths[selected], 0);
   const card = $('#g-village');
   card.innerHTML = `<div class="village-name" style="color:${VILLAGE_COLORS[selected]}">${v.name}</div>
-    <div style="font-size:10px;color:var(--muted);margin-bottom:6px">${v.desc}</div>
+    <div style="font-size:12.5px;color:var(--muted);margin-bottom:6px">${v.desc}</div>
     <div class="stat-grid">
       <div class="stat-box"><div class="stat-v sm">${fmt.int(v.N)}</div><div class="stat-l">residents</div></div>
       <div class="stat-box"><div class="stat-v sm" style="color:var(--amber)">${wk}</div><div class="stat-l">reported last 7 d</div></div>
@@ -242,7 +242,7 @@ async function advance() {
 async function finish() {
   const box = $('#g-summary');
   box.classList.add('show');
-  box.innerHTML = `<div class="panel-title">AFTER-ACTION REPORT</div><div style="color:var(--muted);font-size:11px;margin-top:6px">Replaying the valley 30 times without your interventions…</div>`;
+  box.innerHTML = `<div class="panel-title">AFTER-ACTION REPORT</div><div style="color:var(--muted);font-size:13px;margin-top:6px">Replaying the valley 30 times without your interventions…</div>`;
   const cf = await defer(() => counterfactual(world, 30));
   const t = totals(world);
   const gr = grade(t.deaths, cf.deaths.median);
@@ -253,7 +253,7 @@ async function finish() {
       <div style="text-align:center"><div class="grade" style="color:${{ S: '#e0c060', A: 'var(--green-bright)', B: 'var(--teal)', C: 'var(--amber)', D: 'var(--red-bright)' }[gr.letter]}">${gr.letter}</div><div class="panel-sub">GRADE</div></div>
       <div>
         <div class="panel-title">After-action report · ${world.difficulty.toUpperCase()}</div>
-        <div style="font-size:11px;margin-top:4px;line-height:1.7">${gr.note}<br>
+        <div style="font-size:13px;margin-top:4px;line-height:1.7">${gr.note}<br>
         The true pathogen: <em>R₀ = ${h.R0}</em>, latent ${h.latent} d, infectious ${h.infectious} d, CFR ${(h.cfr * 100).toFixed(1)}%. It started in <em>${world.villages[world.seedVillage].name}</em>.</div>
       </div>
     </div>

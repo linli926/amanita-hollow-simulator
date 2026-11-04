@@ -34,7 +34,7 @@ export function renderConduct() {
     <h3 style="margin-top:4px">B · Looking early</h3>
     <div class="grid-2">
       ${chartPanel('l6-bound', 'Stopping boundaries and 40 trial paths', 'z statistic at each look · trials stop when a path crosses a boundary')}
-      <div class="panel"><div class="panel-head"><div class="panel-title">Operating characteristics</div><div class="panel-sub" id="l6-seq-sub"></div></div><div id="l6-seq-table" class="dim" style="font-size:11px">Press SIMULATE.</div></div>
+      <div class="panel"><div class="panel-head"><div class="panel-title">Operating characteristics</div><div class="panel-sub" id="l6-seq-sub"></div></div><div id="l6-seq-table" class="dim" style="font-size:13px">Press SIMULATE.</div></div>
     </div>
     <details class="methods" open><summary>▸ METHODS</summary><div class="method-grid">
       <div><h4>Analysis populations</h4><p><em>ITT</em>: everyone as randomised. It estimates the effect of <em>offering</em> the vaccine, and randomisation protects it. <em>Per-protocol</em>: drops vaccine-arm participants who were not vaccinated. <em>As-treated</em>: compares by vaccine actually received. Both break randomisation.</p></div>

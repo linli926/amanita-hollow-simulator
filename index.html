@@ -6,7 +6,7 @@
 <title>Amanita Hollow</title>
 <meta name="description" content="An interactive outbreak game: design a pathogen, estimate R₀ from noisy field data, run a survival-analysis clinical trial, and command the response across a valley of villages.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 <link rel="stylesheet" href="css/style.css">
 </head>
@@ -122,7 +122,7 @@
       </div>
       <div class="panel">
         <div class="panel-head"><div class="panel-title">Situation assessment</div></div>
-        <div id="a-insight" style="font-size:11px;line-height:1.75;color:var(--text)"></div>
+        <div id="a-insight" style="font-size:13px;line-height:1.75;color:var(--text)"></div>
       </div>
     </div>
 
@@ -154,7 +154,7 @@
     <div>
       <div class="sec-head">Surveillance clock</div>
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
-        <span style="font-size:11px">Data available to</span><span id="f-today" style="font-size:18px;color:var(--bright)">Day —</span>
+        <span style="font-size:13px">Data available to</span><span id="f-today" style="font-size:20px;color:var(--bright)">Day —</span>
       </div>
       <button class="btn" id="f-advance">⏭ WAIT 7 DAYS FOR MORE DATA</button>
     </div>
@@ -190,7 +190,7 @@
       </div>
       <div class="canvas-wrap tall">
         <canvas id="f-chart"></canvas>
-        <div class="overlay-msg" id="f-solved">✓ OUTBREAK IDENTIFIED<br><span id="f-solved-text" style="font-size:11px"></span></div>
+        <div class="overlay-msg" id="f-solved">✓ OUTBREAK IDENTIFIED<br><span id="f-solved-text" style="font-size:13px"></span></div>
       </div>
       <div class="legend">
         <span><i class="box" style="background:var(--amber)"></i>Reported cases</span>
@@ -215,7 +215,7 @@
       </div>
       <div class="panel">
         <div class="panel-head"><div class="panel-title">Estimates</div><div class="panel-sub" id="f-est-sub"></div></div>
-        <div id="f-estimates" style="font-size:11px"></div>
+        <div id="f-estimates" style="font-size:13px"></div>
       </div>
     </div>
 
@@ -296,7 +296,7 @@
     </div>
     <div>
       <div class="sec-head">Power analysis · Schoenfeld</div>
-      <div id="t-design" style="font-size:10.5px;line-height:1.75"></div>
+      <div id="t-design" style="font-size:13px;line-height:1.75"></div>
     </div>
   </aside>
 
@@ -333,7 +333,7 @@
       </div>
       <div class="panel">
         <div class="panel-head"><div class="panel-title">Statistical report</div></div>
-        <div id="t-report" style="font-size:11px;color:var(--muted)">Run the trial to generate results.</div>
+        <div id="t-report" style="font-size:13px;color:var(--muted)">Run the trial to generate results.</div>
       </div>
     </div>
 

@@ -35,7 +35,7 @@ export function renderSampling() {
     <div class="panel"><div class="panel-head"><div class="panel-title">Cost and precision</div><div class="panel-sub" id="l3s-table-sub"></div></div><div id="l3s-table" style="overflow-x:auto"></div></div>
     <div class="grid-2">
       ${chartPanel('l3s-front', 'Precision per assay', 'SE of log HR (vaccination) vs number of blood samples assayed, this cohort')}
-      <div class="panel" id="l3s-rep-panel"><div class="panel-head"><div><div class="panel-title">Over 50 repeated cohorts</div><div class="panel-sub">empirical SD of log HR and relative efficiency vs the full cohort</div></div></div><div id="l3s-rep-out" class="dim" style="font-size:11px">Press REPEAT 50× to compare designs by their sampling variability.</div></div>
+      <div class="panel" id="l3s-rep-panel"><div class="panel-head"><div><div class="panel-title">Over 50 repeated cohorts</div><div class="panel-sub">empirical SD of log HR and relative efficiency vs the full cohort</div></div></div><div id="l3s-rep-out" class="dim" style="font-size:13px">Press REPEAT 50× to compare designs by their sampling variability.</div></div>
     </div>
     <details class="methods" open><summary>▸ METHODS</summary><div class="method-grid">
       <div><h4>Full cohort</h4><div class="tex" data-tex="h(t\\mid x)=h_0(t)\\,e^{\\beta_1\\text{vax}+\\beta_2\\text{age}}" data-display="1"></div><p>Cox proportional hazards with Breslow partial likelihood. VE = 1 − HR.</p></div>
@@ -89,7 +89,7 @@ function draw() {
     ${row('Full cohort', V.n3, f.hr, f.lo, f.hi, f.se)}
     ${row(`Nested case–control 1:${V.m3}`, R.ncc.measured, n.or, n.lo, n.hi, n.se)}
     ${row(`Case–cohort (robust SE)`, R.cc.measured, c.or, c.lo, c.hi, c.se, ` <span class="dim">· naive ${cn.se.toFixed(3)}</span>`)}
-    </table><p class="dim" style="font-size:10.5px;margin-top:6px">Relative efficiency = Var(full cohort) / Var(design), from model-based SEs in this one cohort. Efficiency per assay divides it by the fraction of the cohort assayed: values above 1× mean the design extracts more information per sample than assaying everyone.</p>`);
+    </table><p class="dim" style="font-size:13px;margin-top:6px">Relative efficiency = Var(full cohort) / Var(design), from model-based SEs in this one cohort. Efficiency per assay divides it by the fraction of the cohort assayed: values above 1× mean the design extracts more information per sample than assaying everyone.</p>`);
 
   // Frontier chart
   const pts = [...R.front.ncc, ...R.front.cc, { x: V.n3, se: f.se }];
@@ -138,7 +138,7 @@ async function repeatSampling() {
   const row = (name, xs, assays) => { const r = sd(xs); return `<tr><td>${name}</td><td class="r">${fmt.int(assays)}</td><td class="r">${(r.m - truth >= 0 ? '+' : '') + (r.m - truth).toFixed(3)}</td><td class="r">${r.sd.toFixed(3)}</td><td class="r">${pct((F.sd / r.sd) ** 2)}</td></tr>`; };
   html('l3s-rep-out', `<table class="res"><tr><th>Design</th><th class="r">Mean assays</th><th class="r">Bias (log HR)</th><th class="r">Empirical SD</th><th class="r">Rel. efficiency</th></tr>
     ${row('Full cohort', out.b.full, V.n3)}${row(`Nested case–control 1:${V.m3}`, out.b.ncc, out.assays.ncc)}${row(`Case–cohort ${pct(V.alpha3)}`, out.b.cc, out.assays.cc)}</table>
-    <p class="dim" style="font-size:10.5px;margin-top:6px">All three designs are unbiased for the hazard ratio. Rule of thumb for 1:m nested case–control: efficiency ≈ m/(m+1) of the full cohort.</p>`);
+    <p class="dim" style="font-size:13px;margin-top:6px">All three designs are unbiased for the hazard ratio. Rule of thumb for 1:m nested case–control: efficiency ≈ m/(m+1) of the full cohort.</p>`);
 }
 
 // ═════════════════════════ 4 · Reusing case–control data ═════════════════════════

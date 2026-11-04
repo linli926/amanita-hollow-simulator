@@ -189,7 +189,9 @@ function drawSide(tab = sideTab()) {
     const truth = { 'Volvarin': R.o.hr, 'Age (+10 y)': R.o.hrAgePer10, 'Comorbidity': R.o.hrComorb, 'Volvarin (unadj.)': R.o.hr };
     const lo = Math.min(0.2, ...rows.map(r => r.lo)) * 0.9, hi = Math.max(5, ...rows.map(r => r.hi)) * 1.1;
     side.render(c => {
-      c.axes({ pad: { left: 118 }, xMin: lo, xMax: hi, yMin: 0, yMax: rows.length + 1, logX: true, xTicks: 4, yTicks: 1, xFmt: v => v.toFixed(v < 1 ? 2 : 1), yFmt: () => '', xLabel: 'hazard ratio (log scale)' });
+      c.ctx.font = '12px "IBM Plex Mono", monospace';
+      const labelW = Math.max(...rows.map(r => c.ctx.measureText(r.name).width)) + 18;
+      c.axes({ pad: { left: Math.min(labelW, c.W * 0.45) }, xMin: lo, xMax: hi, yMin: 0, yMax: rows.length + 1, logX: true, xTicks: 4, yTicks: 1, xFmt: v => v.toFixed(v < 1 ? 2 : 1), yFmt: () => '', xLabel: 'hazard ratio (log scale)' });
       c.vline(1, { color: 'rgba(232,220,196,0.4)', dash: [] });
       rows.forEach((r, i) => {
         const y = rows.length - i;

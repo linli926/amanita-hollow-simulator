@@ -86,7 +86,7 @@ export function forest(chart, rows, truth, opts = {}) {
     const step = (rawHi - rawLo > 0.8 || c.W < 560) ? 0.2 : 0.1;
     const lo = Math.max(-1, Math.floor(rawLo / step - 1e-9) * step), hi = Math.min(1, Math.ceil(rawHi / step - 1e-9) * step);
     const ticks = Math.round((hi - lo) / step);
-    c.ctx.font = '10px "Share Tech Mono", ui-monospace, monospace';
+    c.ctx.font = '12.5px "IBM Plex Mono", ui-monospace, monospace';
     const labelW = Math.max(...rows.map(r => c.ctx.measureText(r.label).width)) + 18;
     c.axes({ pad: { left: Math.min(labelW, c.W * 0.5), right: 16 }, xMin: lo, xMax: hi, yMin: 0, yMax: rows.length + 1, xTicks: ticks, yTicks: 1,
       xFmt: v => Math.round(v * 100) + '%', yFmt: () => '', xLabel: 'vaccine efficacy (1 − ratio)' });
@@ -107,7 +107,7 @@ export function signed(x) { const v = x * 100; return (v >= 0 ? '+' : '−') + M
 export function forestRatio(chart, rows, truth, label = 'odds ratio (log scale)') {
   const lo = Math.min(...rows.map(r => r.lo), truth ?? Infinity) / 1.15, hi = Math.max(...rows.map(r => r.hi), truth ?? 0) * 1.15;
   chart.render(c => {
-    c.ctx.font = '10px "Share Tech Mono", ui-monospace, monospace';
+    c.ctx.font = '12.5px "IBM Plex Mono", ui-monospace, monospace';
     const labelW = Math.max(...rows.map(r => c.ctx.measureText(r.label).width)) + 18;
     c.axes({ pad: { left: Math.min(labelW, c.W * 0.5), right: 16 }, xMin: lo, xMax: hi, logX: true, yMin: 0, yMax: rows.length + 1, xTicks: 4, yTicks: 1,
       xFmt: v => v.toFixed(v < 1 ? 2 : 1), yFmt: () => '', xLabel: label });

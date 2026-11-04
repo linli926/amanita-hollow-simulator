@@ -5,7 +5,7 @@ export const COLORS = {
   S: '#4a7fa8', E: '#d08b3a', I: '#c0392b', R: '#4a9c6a', D: '#9b7653', V: '#8a6cc0',
   obs: '#c9a227', fit: '#5fb3a1', guess: '#6b9bb8', truth: '#e0d3b8',
   treat: '#4a9c6a', control: '#c0392b',
-  grid: 'rgba(185,160,115,0.08)', axis: 'rgba(185,160,115,0.45)', text: '#c9baa0', muted: '#7a6a58',
+  grid: 'rgba(214,190,140,0.13)', axis: 'rgba(214,190,140,0.75)', text: '#d9cdb6', muted: '#a6977f',
   bg: '#0c0f11',
 };
 
@@ -15,12 +15,12 @@ export function alpha(hex, a) {
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
 }
 
-const FONT = '10px "Share Tech Mono", ui-monospace, monospace';
+const FONT = '12.5px "IBM Plex Mono", ui-monospace, monospace';
 
 export class Chart {
   constructor(canvas, opts = {}) {
     this.canvas = canvas;
-    this.basePad = { top: 18, right: 18, bottom: 32, left: 52, ...(opts.pad || {}) };
+    this.basePad = { top: 20, right: 20, bottom: 38, left: 60, ...(opts.pad || {}) };
     this.pad = { ...this.basePad };
     this.drawFn = null;
     this.tooltipFn = null;
@@ -102,11 +102,11 @@ export class Chart {
       const x = this.X(v);
       ctx.strokeStyle = COLORS.grid; ctx.beginPath(); ctx.moveTo(x, pad.top); ctx.lineTo(x, pad.top + ph); ctx.stroke();
       ctx.fillStyle = COLORS.axis; ctx.textAlign = 'center';
-      ctx.fillText(xFmt(v), x, pad.top + ph + 14);
+      ctx.fillText(xFmt(v), x, pad.top + ph + 16);
     }
-    if (o.xLabel) { ctx.fillStyle = COLORS.muted; ctx.textAlign = 'right'; ctx.fillText(o.xLabel, pad.left + pw, pad.top + ph + 27); }
+    if (o.xLabel) { ctx.fillStyle = COLORS.muted; ctx.textAlign = 'right'; ctx.fillText(o.xLabel, pad.left + pw, pad.top + ph + 32); }
     if (o.yLabel) {
-      ctx.save(); ctx.translate(11, pad.top + ph / 2); ctx.rotate(-Math.PI / 2);
+      ctx.save(); ctx.translate(13, pad.top + ph / 2); ctx.rotate(-Math.PI / 2);
       ctx.fillStyle = COLORS.muted; ctx.textAlign = 'center'; ctx.fillText(o.yLabel, 0, 0); ctx.restore();
     }
   }
@@ -254,7 +254,7 @@ export class Chart {
   /** Message shown when there's nothing to plot yet. */
   empty(msg) {
     const { ctx, W, H } = this;
-    ctx.font = '12px "Special Elite", serif'; ctx.fillStyle = COLORS.muted; ctx.textAlign = 'center';
+    ctx.font = '14px "Special Elite", serif'; ctx.fillStyle = COLORS.muted; ctx.textAlign = 'center';
     ctx.fillText(msg, W / 2, H / 2);
   }
 
@@ -269,7 +269,7 @@ export class Chart {
     ctx.beginPath(); ctx.moveTo(hx, pad.top); ctx.lineTo(hx, pad.top + ph); ctx.stroke(); ctx.setLineDash([]);
     ctx.font = FONT;
     const w = Math.max(...lines.map(l => ctx.measureText(l.text).width)) + 16;
-    const h = lines.length * 14 + 8;
+    const h = lines.length * 17 + 10;
     let bx = hx + 12, by = Math.max(pad.top, hy - h / 2);
     if (bx + w > pad.left + pw) bx = hx - 12 - w;
     if (by + h > pad.top + ph) by = pad.top + ph - h;
@@ -277,7 +277,7 @@ export class Chart {
     ctx.fillRect(bx, by, w, h); ctx.strokeRect(bx + 0.5, by + 0.5, w - 1, h - 1);
     lines.forEach((l, i) => {
       ctx.fillStyle = l.color ?? COLORS.text; ctx.textAlign = 'left';
-      ctx.fillText(l.text, bx + 8, by + 15 + i * 14);
+      ctx.fillText(l.text, bx + 9, by + 18 + i * 17);
     });
   }
 }

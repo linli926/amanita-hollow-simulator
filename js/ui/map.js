@@ -84,7 +84,7 @@ export class ValleyMap {
     ctx.fillStyle = 'rgba(74,127,168,0.16)';
     ctx.beginPath(); ctx.ellipse(W * 0.24, H * 0.88, W * 0.09, H * 0.06, -0.2, 0, Math.PI * 2); ctx.fill();
     // Cavern
-    ctx.fillStyle = 'rgba(192,57,43,0.6)'; ctx.font = '10px "Share Tech Mono", monospace'; ctx.textAlign = 'left';
+    ctx.fillStyle = 'rgba(192,57,43,0.6)'; ctx.font = '12.5px "IBM Plex Mono", monospace'; ctx.textAlign = 'left';
     ctx.fillText('✶ the cavern', W * 0.025, H * 0.47);
 
     const hist = world.history.slice(0, view.upToDay);
@@ -138,40 +138,40 @@ export class ValleyMap {
         ctx.beginPath(); ctx.arc(p.x, p.y, r + 4, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
       }
       if (view.selected === k || this.hover === k) {
-        ctx.strokeStyle = view.selected === k ? '#e8dcc4' : 'rgba(232,220,196,0.4)'; ctx.lineWidth = 1.2;
+        ctx.strokeStyle = view.selected === k ? '#f3ead7' : 'rgba(232,220,196,0.4)'; ctx.lineWidth = 1.2;
         ctx.setLineDash([6, 4]); ctx.lineDashOffset = -t * 12;
         ctx.beginPath(); ctx.arc(p.x, p.y, r + 9, 0, Math.PI * 2); ctx.stroke();
         ctx.setLineDash([]); ctx.lineDashOffset = 0;
       }
       // Weekly reported incidence in the circle
-      ctx.fillStyle = '#f2e8d4'; ctx.font = '11px "Share Tech Mono", monospace'; ctx.textAlign = 'center';
+      ctx.fillStyle = '#fbf3e3'; ctx.font = '13px "IBM Plex Mono", monospace'; ctx.textAlign = 'center';
       ctx.fillText(String(weekly[k]), p.x, p.y + 4);
       // Labels
-      ctx.font = '12px "Special Elite", serif'; ctx.fillStyle = '#e8dcc4';
-      ctx.fillText(v.name, p.x, p.y + r + 15);
-      ctx.font = '9px "Share Tech Mono", monospace'; ctx.fillStyle = '#7a6a58';
-      ctx.fillText(`pop ${v.N.toLocaleString('en-US')} · ${inten.toFixed(1)}/1k`, p.x, p.y + r + 26);
+      ctx.font = '14px "Special Elite", serif'; ctx.fillStyle = '#f3ead7';
+      ctx.fillText(v.name, p.x, p.y + r + 20);
+      ctx.font = '11.5px "IBM Plex Mono", monospace'; ctx.fillStyle = '#a6977f';
+      ctx.fillText(`pop ${v.N.toLocaleString('en-US')} · ${inten.toFixed(1)}/1k`, p.x, p.y + r + 35);
       // Badges
       const on = BADGES.filter(([key]) => world.policy[k][key]);
-      const bw = 26, gap = 3, total = on.length * bw + (on.length - 1) * gap;
+      const bw = 32, gap = 3, total = on.length * bw + (on.length - 1) * gap;
       on.forEach(([, lab, bc], i) => {
         const bx = p.x - total / 2 + i * (bw + gap), by = p.y - r - 18;
-        ctx.fillStyle = 'rgba(6,8,10,0.85)'; ctx.fillRect(bx, by, bw, 12);
-        ctx.strokeStyle = bc; ctx.lineWidth = 1; ctx.strokeRect(bx + 0.5, by + 0.5, bw - 1, 11);
-        ctx.fillStyle = bc; ctx.font = '8.5px "Share Tech Mono", monospace'; ctx.fillText(lab, bx + bw / 2, by + 9);
+        ctx.fillStyle = 'rgba(6,8,10,0.85)'; ctx.fillRect(bx, by - 2, bw, 15);
+        ctx.strokeStyle = bc; ctx.lineWidth = 1; ctx.strokeRect(bx + 0.5, by - 1.5, bw - 1, 14);
+        ctx.fillStyle = bc; ctx.font = '10.5px "IBM Plex Mono", monospace'; ctx.fillText(lab, bx + bw / 2, by + 9);
       });
       if (lastDay?.overloaded?.[k]) {
-        ctx.fillStyle = '#d0473a'; ctx.font = '9px "Share Tech Mono", monospace';
-        ctx.fillText('⚠ WARDS FULL', p.x, p.y + r + 37);
+        ctx.fillStyle = '#d0473a'; ctx.font = '11.5px "IBM Plex Mono", monospace';
+        ctx.fillText("⚠ WARDS FULL", p.x, p.y + r + 49);
       }
     });
 
     // Legend
-    ctx.textAlign = 'left'; ctx.font = '9px "Share Tech Mono", monospace';
+    ctx.textAlign = 'left'; ctx.font = '11.5px "IBM Plex Mono", monospace';
     const lx = W - 150, ly = H - 22;
-    ctx.fillStyle = '#7a6a58'; ctx.fillText('reported / 1k / wk', lx, ly - 6);
+    ctx.fillStyle = '#a6977f'; ctx.fillText('reported / 1k / wk', lx, ly - 6);
     for (let i = 0; i <= 20; i++) { ctx.fillStyle = heat(i / 20 * 12); ctx.fillRect(lx + i * 6, ly, 6, 6); }
-    ctx.fillStyle = '#7a6a58'; ctx.fillText('0', lx, ly + 16); ctx.textAlign = 'right'; ctx.fillText('12+', lx + 126, ly + 16);
+    ctx.fillStyle = '#a6977f'; ctx.fillText('0', lx, ly + 16); ctx.textAlign = 'right'; ctx.fillText('12+', lx + 126, ly + 16);
   }
 }
 
