@@ -1,8 +1,14 @@
+About
+An interactive web-based epidemic modeling tool built to apply concepts from graduate biostatistics 
+coursework (Infectious Disease Modeling and Survival Analysis) to simulated outbreak scenarios.
+
+---
+
 # Amanita Hollow — Epidemic Intelligence Terminal
 
 An interactive outbreak game built on infectious-disease modelling and survival-analysis methods.
 
-A flood has torn open a cavern beneath the valley of **Amanita Hollow**, releasing the spores of an unclassified *Amanita* species. You play four roles in turn:
+A flood has torn open a cavern beneath the valley of **Amanita Hollow**, releasing the spores of an unclassified *Amanita* species. You play five roles in turn:
 
 | Mode | Role | You do | Under the hood |
 |---|---|---|---|
@@ -38,6 +44,8 @@ Every place name is invented, and most are built from the anatomy of an *Amanita
 | **Volvarin** | volva, the cup at the base of an *Amanita* stem | drug-name suffix *-in* | the repurposed antifungal tested in mode III |
 
 ## Run it
+
+> The original single-file prototype (v0) is kept unchanged as [`amanita-hollow.html`](amanita-hollow.html). It still opens by double-clicking. The upgraded app (v1) is `index.html`.
 
 It is plain static HTML with ES modules: no build step and no dependencies. ES modules don't load from `file://`, so serve the folder:
 
@@ -130,6 +138,8 @@ tests/                node:test unit tests
 3. **临床试验**：Kaplan–Meier、log-rank 检验、Cox 回归、Schoenfeld 样本量和模拟功效
 4. **疫苗实验室**：四个研究设计案例，分两部分：观察性研究（混杂与随机化、病例对照与 logistic 回归）和随机对照试验（随机化与样本量、III 期试验与 CONSORT 流程图）
 5. **疫情指挥**：六个村庄组成的元种群随机模型，有限预算下做干预决策；用下一代矩阵计算真实 Rₜ，最后和「不干预」的反事实模拟对比打分
+
+原始的单文件版本（v0）原样保留为 `amanita-hollow.html`，双击即可打开；升级后的版本（v1）是 `index.html`。
 
 所有模式互相联动：模式一释放的病原就是模式二要调查的案件，模式三的试验显著后，模式四才能使用治疗。
 
