@@ -6,6 +6,8 @@ coursework (Infectious Disease Modeling and Survival Analysis) to simulated outb
 
 # Amanita Hollow — Epidemic Intelligence Terminal
 
+**▶ Play online: https://linli926.github.io/amanita-hollow-simulator/**
+
 An interactive outbreak game built on infectious-disease modelling and survival-analysis methods.
 
 A flood has torn open a cavern beneath the valley of **Amanita Hollow**, releasing the spores of an unclassified *Amanita* species. You play five roles in turn:
