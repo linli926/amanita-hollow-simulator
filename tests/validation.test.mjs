@@ -113,3 +113,21 @@ test('Story link — villagers get no vaccine without a licence; the game uses t
   while (!playWeek(g, { silent: true }));
   assert.ok(counterfactual(g, 2).deaths.median >= 0); // counterfactual replays the same pathogen
 });
+
+test('Story link — placebo-arm mortality in the Volvarin trial follows the pathogen\'s CFR', async () => {
+  const { mortalityFromCFR } = await import('../js/modes/trial.js');
+  assert.equal(mortalityFromCFR(0.03), 27);   // 0.9 × 3% ÷ 10% hospitalised
+  assert.equal(mortalityFromCFR(0.0), 5);     // floor of the slider
+  assert.equal(mortalityFromCFR(0.2), 80);    // ceiling of the slider
+});
+
+test('Volvarin trial — placebo-arm 60-day mortality equals the setting on average over the patient mix', async () => {
+  const { simulateTrial } = await import('../js/stats/survival.js');
+  const rng = makeRng(106);
+  for (const m60 of [0.1, 0.27, 0.45]) {
+    const { patients } = simulateTrial({ n: 40000, hr: 0.65, controlMortality: m60, shape: 1.2, hrAgePer10: 1.3, hrComorb: 1.8, followUpDays: 60, accrualDays: 0, dropoutRate: 0 }, rng);
+    const ctrl = patients.filter(p => p.trt === 0);
+    const dead60 = ctrl.filter(p => p.event && p.time <= 60).length / ctrl.length;
+    inRange(dead60 - m60, -0.012, 0.012, `placebo 60-day mortality at ${m60}`);
+  }
+});

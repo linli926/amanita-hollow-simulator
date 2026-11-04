@@ -16,7 +16,7 @@ A flood has torn open a cavern beneath the valley of **Amanita Hollow**, releasi
 
 1. **Model** the epidemic (I): the pathogen you design here is the one used everywhere else.
 2. **Estimate** R₀ from noisy surveillance data (II).
-3. **Test** a treatment in a survival-analysis trial (III).
+3. **Test** a treatment in a survival-analysis trial (III): *Volvarin*, a fictional existing antifungal being repurposed, against placebo, both on top of standard care, in hospitalised patients. The placebo-arm mortality is derived from your pathogen's case fatality ratio.
 4. **Design** a vaccine trial that runs *during* the outbreak (V). Its placebo-arm attack rate is computed from your epidemic curve, so a trial that starts after the peak sees few cases and cannot reach its licensing criterion (the problem the Ebola and Zika vaccine trials faced).
 5. **Respond** (IV). Villagers can be vaccinated only after the Phase III trial licenses the vaccine, from the week of the licensing decision.
 

@@ -219,19 +219,40 @@ export function schoenfeldPower(hr, events, alpha = 0.05, alloc = 0.5) {
   return normCdf(z);
 }
 
+/** Patient mix in the trial: age ~ N(55, 16²) truncated to 18–90, 35% with a comorbidity. */
+const AGE_MEAN = 55, AGE_SD = 16, P_COMORB = 0.35;
+
+/**
+ * Baseline cumulative hazard at day 60, H₀(60), such that the AVERAGE placebo-arm 60-day
+ * mortality over the patient mix equals m60:  E[1 − exp(−H₀(60)·e^{lp})] = m60.
+ * The expectation is a deterministic quadrature over age quantiles × comorbidity, solved by bisection.
+ */
+export function baselineHazardFor(m60, bAge, bCom) {
+  const lps = [];
+  for (let i = 0; i < 40; i++) {
+    const age = Math.min(90, Math.max(18, AGE_MEAN + AGE_SD * normInv((i + 0.5) / 40)));
+    for (const [c, w] of [[0, 1 - P_COMORB], [1, P_COMORB]]) lps.push({ e: Math.exp(bAge * (age - 55) / 10 + bCom * c), w: w / 40 });
+  }
+  const mort = H => lps.reduce((s, p) => s + p.w * (1 - Math.exp(-H * p.e)), 0);
+  let lo = 0, hi = 50;
+  for (let k = 0; k < 80; k++) { const mid = (lo + hi) / 2; if (mort(mid) < m60) lo = mid; else hi = mid; }
+  return (lo + hi) / 2;
+}
+
 /**
  * Simulate a randomised two-arm trial with Weibull proportional hazards.
  *   H(t | x) = (t / scale)^shape · exp(β_trt·trt + β_age·(age−55)/10 + β_com·comorb)
- * The baseline scale is chosen so a reference control patient (age 55, no
- * comorbidity) has the requested mortality by day 60.
+ * The baseline scale is calibrated so that the average control-arm patient mix has the
+ * requested mortality by day 60 (see baselineHazardFor).
  */
 export function simulateTrial(o, rng) {
   const shape = o.shape ?? 1.2;
   const m60 = Math.min(0.95, Math.max(0.01, o.controlMortality ?? 0.3));
-  const scale = 60 / Math.pow(-Math.log(1 - m60), 1 / shape);
   const bTrt = Math.log(o.hr);
   const bAge = Math.log(o.hrAgePer10 ?? 1.3);
   const bCom = Math.log(o.hrComorb ?? 1.8);
+  const H60 = baselineHazardFor(m60, bAge, bCom);
+  const scale = 60 / Math.pow(H60, 1 / shape);
   const accrual = o.accrualDays ?? 30;
   const followUp = o.followUpDays ?? 60;
   const dropRate = o.dropoutRate ?? 0;
@@ -244,8 +265,8 @@ export function simulateTrial(o, rng) {
 
   const patients = [];
   for (let i = 0; i < n; i++) {
-    const age = Math.min(90, Math.max(18, Math.round(rng.normal(55, 16))));
-    const comorb = rng.bernoulli(0.35);
+    const age = Math.min(90, Math.max(18, Math.round(rng.normal(AGE_MEAN, AGE_SD))));
+    const comorb = rng.bernoulli(P_COMORB);
     const trt = arms[i];
     const lp = bTrt * trt + bAge * (age - 55) / 10 + bCom * comorb;
     const T = scale * Math.pow(rng.exponential(1) / Math.exp(lp), 1 / shape);

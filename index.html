@@ -245,7 +245,7 @@
     <div>
       <div class="sec-head">Trial design</div>
       <div class="param">
-        <div class="param-top"><span>Patients enrolled</span><span class="param-val" id="t-n-val"></span></div>
+        <div class="param-top"><span>Hospitalised patients enrolled</span><span class="param-val" id="t-n-val"></span></div>
         <input type="range" id="t-n" min="40" max="1500" step="20" value="300">
         <div class="param-hint">Permuted-block randomisation 1:1 (blocks of 4)</div>
       </div>
@@ -266,12 +266,14 @@
     <div>
       <div class="sec-head">Nature's parameters <span class="aside">(hidden from analysis)</span></div>
       <div class="param">
-        <div class="param-top"><span>Treatment hazard ratio</span><span class="param-val" id="t-hr-val" style="color:var(--green-bright)"></span></div>
+        <div class="param-top"><span>Volvarin hazard ratio</span><span class="param-val" id="t-hr-val" style="color:var(--green-bright)"></span></div>
         <input type="range" id="t-hr" min="0.25" max="1.5" step="0.05" value="0.65">
+        <div class="param-hint">&lt; 1: Volvarin lowers the risk of death · 1: no effect</div>
       </div>
       <div class="param">
-        <div class="param-top"><span>Control 60-day mortality</span><span class="param-val" id="t-m60-val"></span></div>
+        <div class="param-top"><span>Placebo-arm 60-day mortality</span><span class="param-val" id="t-m60-val"></span></div>
         <input type="range" id="t-m60" min="5" max="80" step="1" value="30">
+        <div class="param-hint" id="t-m60-hint"></div>
       </div>
       <div class="param">
         <div class="param-top"><span>Weibull shape k</span><span class="param-val" id="t-shape-val"></span></div>
@@ -300,14 +302,20 @@
 
   <section class="content">
     <div class="panel">
+      <div class="study-grid">
+        <div><h3>The drug</h3><p><em>Volvarin</em> (a fictional name) is an antifungal already licensed for other fungal infections. Lab tests at Sporeford suggest it may also act on the Amanita spores, so it is being <em>repurposed</em>. That is usually the first thing tried in a new outbreak, because an existing drug can be tested in weeks while a vaccine takes months.</p></div>
+        <div><h3>The trial</h3><p>Patients <em>already hospitalised</em> with severe Amanita infection are randomised 1:1 to <em>Volvarin + standard care</em> or <em>placebo + standard care</em>. The outcome is time from randomisation to death. Patients still alive at the end of follow-up, or lost to follow-up, are censored. This tests a <em>treatment</em> for the sick, which is different from the vaccine in the Vaccine Lab, which <em>prevents</em> infection in the healthy.</p></div>
+      </div>
+    </div>
+    <div class="panel">
       <div class="panel-head">
-        <div><div class="panel-title">Kaplan–Meier survival — treatment vs control</div><div class="panel-sub">shaded = 95% log–log Greenwood bands · ticks = censored · dashed = median</div></div>
+        <div><div class="panel-title">Kaplan–Meier survival — Volvarin vs placebo</div><div class="panel-sub">shaded = 95% log–log Greenwood bands · ticks = censored · dashed = median</div></div>
       </div>
       <div class="canvas-wrap tall"><canvas id="t-km"></canvas></div>
       <div class="risk-table" id="t-risk"></div>
       <div class="legend">
-        <span><i style="background:var(--green-bright);height:3px"></i>Treatment</span>
-        <span><i style="background:var(--red-bright);height:3px"></i>Control</span>
+        <span><i style="background:var(--green-bright);height:3px"></i>Volvarin + standard care</span>
+        <span><i style="background:var(--red-bright);height:3px"></i>Placebo + standard care</span>
       </div>
     </div>
 
@@ -333,7 +341,7 @@
       <summary>▸ METHODS — SURVIVAL ANALYSIS</summary>
       <div class="method-grid">
         <div><h4>Data-generating model</h4><div class="tex" data-tex="H(t\mid x)=\left(t/\lambda\right)^{k} e^{\beta_1 \text{trt}+\beta_2 \frac{\text{age}-55}{10}+\beta_3\text{comorb}}" data-display="1"></div>
-          <p>Weibull proportional hazards; staggered uniform accrual; administrative + exponential dropout censoring.</p></div>
+          <p>Weibull proportional hazards; staggered uniform accrual; administrative + exponential dropout censoring. The baseline hazard is calibrated by bisection so that the <em>average</em> placebo-arm 60-day mortality over the patient mix (age, comorbidity) equals the setting. By default that setting is derived from your pathogen: 60-day mortality ≈ 0.9 × CFR ÷ 10% hospitalised.</p></div>
         <div><h4>Kaplan–Meier &amp; Greenwood</h4><div class="tex" data-tex="\hat S(t)=\prod_{t_i\le t}\Big(1-\frac{d_i}{n_i}\Big),\;\; \widehat{\text{Var}}=\hat S^2\sum\frac{d_i}{n_i(n_i-d_i)}" data-display="1"></div>
           <p>CIs on the log(−log) scale. Median CI from where the band crosses 0.5 (Brookmeyer–Crowley).</p><p class="cite">Kaplan &amp; Meier (1958); Greenwood (1926)</p></div>
         <div><h4>Log-rank test</h4><div class="tex" data-tex="\chi^2=\frac{\big(\sum_i O_{1i}-E_{1i}\big)^2}{\sum_i \frac{d_i n_{0i} n_{1i}(n_i-d_i)}{n_i^2(n_i-1)}}" data-display="1"></div>

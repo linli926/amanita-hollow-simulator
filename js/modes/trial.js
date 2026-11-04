@@ -24,7 +24,7 @@ export function initTrial(ctx) {
   get.fu = slider('t-fu', v => v + ' d', d);
   get.drop = slider('t-drop', v => v + '%', d);
   get.hr = slider('t-hr', v => v.toFixed(2), d);
-  get.m60 = slider('t-m60', v => v + '%', d);
+  get.m60 = slider('t-m60', v => v + '%', () => { d(); m60Hint(); });
   get.shape = slider('t-shape', v => v.toFixed(1), d);
   get.hrage = slider('t-hrage', v => v.toFixed(2), d);
   get.hrcom = slider('t-hrcom', v => v.toFixed(1), d);
@@ -34,18 +34,42 @@ export function initTrial(ctx) {
   $('#t-csv').addEventListener('click', () => {
     if (!R) return;
     downloadCSV('amanita-hollow-trial.csv', ['id', 'arm', 'age', 'comorbidity', 'enrol_day', 'time', 'death'],
-      R.patients.map(p => [p.id, p.trt ? 'treatment' : 'control', p.age, p.comorb, p.enrol.toFixed(1), p.time, p.event]));
+      R.patients.map(p => [p.id, p.trt ? 'volvarin' : 'placebo', p.age, p.comorb, p.enrol.toFixed(1), p.time, p.event]));
   });
   renderDesign();
   km.render(c => c.empty('Design the trial, then press RUN THE TRIAL'));
   side.render(c => c.empty('No data yet'));
 }
 
+/**
+ * Linking the trial to the pathogen from mode I. The CFR is the share of all infections that
+ * end in death; trial patients are the hospitalised minority, so their mortality is much higher:
+ *   60-day mortality among hospitalised ≈ (share of deaths that occur in hospital × CFR) / share hospitalised
+ */
+export const HOSPITALISED_SHARE = 0.10;   // 1 in 10 infections becomes severe enough for hospital
+export const DEATHS_IN_HOSPITAL = 0.90;   // 90% of deaths happen among hospitalised patients
+export function mortalityFromCFR(cfr) {
+  return Math.min(80, Math.max(5, Math.round(100 * DEATHS_IN_HOSPITAL * cfr / HOSPITALISED_SHARE)));
+}
+let appliedSeed = null;
+
+function m60Hint() {
+  const o = state.outbreak;
+  if (!o) { html('t-m60-hint', 'Release a pathogen in mode I to derive this from its case fatality ratio.'); return; }
+  const derived = mortalityFromCFR(o.cfr);
+  html('t-m60-hint', `From your pathogen: ${DEATHS_IN_HOSPITAL * 100}% × CFR ${(o.cfr * 100).toFixed(1)}% ÷ ${HOSPITALISED_SHARE * 100}% hospitalised ≈ <em>${derived}%</em>` +
+    (get.m60() !== derived ? ` · <button class="link-btn" id="t-m60-reset">reset to ${derived}%</button>` : ''));
+  $('#t-m60-reset')?.addEventListener('click', () => { get.m60.set(derived); m60Hint(); powerSim = null; renderDesign(); });
+}
+
 export function enterTrial(banner) {
   const o = state.outbreak;
-  banner(`<em>KA MEDICAL SCHOOL · EMERGENCY DEPLOYMENT.</em> A candidate antifungal, <em>Volvarin</em>, has reached the Hollow. ` +
-    (o ? `The outbreak you seeded (CFR ${(o.cfr * 100).toFixed(1)}%) is filling the wards. ` : '') +
-    `Design a randomised controlled trial and analyse survival with Kaplan–Meier, log-rank and Cox regression. <em>A significant benefit unlocks treatment in Outbreak Response.</em> An underpowered trial wastes patients and time.`);
+  if (o && o.seed !== appliedSeed) { get.m60.set(mortalityFromCFR(o.cfr)); appliedSeed = o.seed; powerSim = null; renderDesign(); }
+  m60Hint();
+  banner(`<em>KA MEDICAL SCHOOL · EMERGENCY DEPLOYMENT.</em> ` +
+    (o ? `The pathogen you released (CFR ${(o.cfr * 100).toFixed(1)}%) is filling the wards of Sporeford hospital. ` : 'Amanita infections are filling the wards of Sporeford hospital. ') +
+    `Doctors want to know whether <em>Volvarin</em>, an existing antifungal, keeps severely ill patients alive. Design a randomised placebo-controlled trial and analyse survival with Kaplan–Meier, log-rank and Cox regression. ` +
+    `<em>A significant benefit makes Volvarin available as treatment in Outbreak Response.</em> An underpowered trial wastes patients and time.`);
   km.redraw(); side.redraw();
 }
 
@@ -98,8 +122,8 @@ function run() {
   const g0 = byArm(0), g1 = byArm(1);
   const km0 = kaplanMeier(g0.times, g0.events), km1 = kaplanMeier(g1.times, g1.events);
   const lr = logRank(times, events, arms);
-  const coxU = coxPH(times, events, patients.map(p => [p.trt]), ['Treatment']);
-  const coxA = coxPH(times, events, patients.map(p => [p.trt, (p.age - 55) / 10, p.comorb]), ['Treatment', 'Age (+10 y)', 'Comorbidity']);
+  const coxU = coxPH(times, events, patients.map(p => [p.trt]), ['Volvarin']);
+  const coxA = coxPH(times, events, patients.map(p => [p.trt, (p.age - 55) / 10, p.comorb]), ['Volvarin', 'Age (+10 y)', 'Comorbidity']);
   const cIndex = concordance(times, events, coxA.linearPredictor);
   R = {
     o, patients, km0, km1, lr, coxU, coxA, cIndex,
@@ -147,22 +171,22 @@ function drawKM() {
     const at = (k) => { let p = k.curve[0]; for (const q of k.curve) { if (q.t <= x) p = q; else break; } return p; };
     const a = at(km1), b = at(km0);
     return [{ text: `Day ${x.toFixed(0)}` },
-      { text: `Treatment ${fmt.pct(a.s)} [${fmt.pct(a.lo, 0)}–${fmt.pct(a.hi, 0)}]`, color: COLORS.treat },
-      { text: `Control   ${fmt.pct(b.s)} [${fmt.pct(b.lo, 0)}–${fmt.pct(b.hi, 0)}]`, color: COLORS.control },
+      { text: `Volvarin ${fmt.pct(a.s)} [${fmt.pct(a.lo, 0)}–${fmt.pct(a.hi, 0)}]`, color: COLORS.treat },
+      { text: `Placebo  ${fmt.pct(b.s)} [${fmt.pct(b.lo, 0)}–${fmt.pct(b.hi, 0)}]`, color: COLORS.control },
       { text: `at risk ${atRisk(R.g1.times, x)} · ${atRisk(R.g0.times, x)}`, color: COLORS.muted }];
   });
   // Number-at-risk table
   const ticks = Array.from({ length: 7 }, (_, i) => Math.round(xmax * i / 6));
   const row = (label, g, col) => `<tr><td style="color:${col}">${label}</td>${ticks.map(t => `<td>${atRisk(g.times, t)}</td>`).join('')}</tr>`;
-  html('t-risk', `<table><tr><td>Number at risk</td>${ticks.map(t => `<td>d${t}</td>`).join('')}</tr>${row('Treatment', R.g1, COLORS.treat)}${row('Control', R.g0, COLORS.control)}</table>`);
+  html('t-risk', `<table><tr><td>Number at risk</td>${ticks.map(t => `<td>d${t}</td>`).join('')}</tr>${row('Volvarin', R.g1, COLORS.treat)}${row('Placebo', R.g0, COLORS.control)}</table>`);
 }
 
 function drawSide(tab = sideTab()) {
   if (!R) return;
   const cap = $('#t-side-caption');
   if (tab === 'forest') {
-    const rows = [...R.coxA.coefs, { ...R.coxU.coefs[0], name: 'Treatment (unadj.)' }];
-    const truth = { 'Treatment': R.o.hr, 'Age (+10 y)': R.o.hrAgePer10, 'Comorbidity': R.o.hrComorb, 'Treatment (unadj.)': R.o.hr };
+    const rows = [...R.coxA.coefs, { ...R.coxU.coefs[0], name: 'Volvarin (unadj.)' }];
+    const truth = { 'Volvarin': R.o.hr, 'Age (+10 y)': R.o.hrAgePer10, 'Comorbidity': R.o.hrComorb, 'Volvarin (unadj.)': R.o.hr };
     const lo = Math.min(0.2, ...rows.map(r => r.lo)) * 0.9, hi = Math.max(5, ...rows.map(r => r.hi)) * 1.1;
     side.render(c => {
       c.axes({ pad: { left: 118 }, xMin: lo, xMax: hi, yMin: 0, yMax: rows.length + 1, logX: true, xTicks: 4, yTicks: 1, xFmt: v => v.toFixed(v < 1 ? 2 : 1), yFmt: () => '', xLabel: 'hazard ratio (log scale)' });
@@ -198,7 +222,7 @@ function drawSide(tab = sideTab()) {
       c.step(R.na1.map(p => p.t), R.na1.map(p => p.H), { color: COLORS.treat, width: 1.8 }, R.tMax);
     }, x => {
       const at = arr => { let h = 0; for (const p of arr) { if (p.t <= x) h = p.H; else break; } return h; };
-      return [{ text: `Day ${x.toFixed(0)}` }, { text: `H treat ${at(R.na1).toFixed(3)}`, color: COLORS.treat }, { text: `H ctrl  ${at(R.na0).toFixed(3)}`, color: COLORS.control }];
+      return [{ text: `Day ${x.toFixed(0)}` }, { text: `H Volvarin ${at(R.na1).toFixed(3)}`, color: COLORS.treat }, { text: `H placebo  ${at(R.na0).toFixed(3)}`, color: COLORS.control }];
     });
     cap.textContent = 'Nelson–Aalen cumulative hazard Ĥ(t) = Σ dᵢ/nᵢ. Under PH the ratio of the two curves is constant.';
   }
@@ -218,7 +242,7 @@ function renderReport() {
     : `<span class="ns">No significant difference detected.</span> ${o.hr < 1 ? `The true HR is ${o.hr.toFixed(2)}, so this is a <em>type II error</em>. ${lr.O0 + lr.O1 < schoenfeldEvents(o.hr) ? 'The trial observed too few deaths.' : ''}` : ''}`;
   html('t-report', `
     <table class="res">
-      <tr><th></th><th class="r">Treatment</th><th class="r">Control</th></tr>
+      <tr><th></th><th class="r">Volvarin</th><th class="r">Placebo</th></tr>
       <tr><td>Patients · deaths</td><td class="r" style="color:var(--green-bright)">${n1} · ${km1.events}</td><td class="r" style="color:var(--red-bright)">${n0} · ${km0.events}</td></tr>
       <tr><td>Median survival [95% CI]</td><td class="r">${med(med1)}</td><td class="r">${med(med0)}</td></tr>
       <tr><td>Observed / expected deaths</td><td class="r">${lr.O1} / ${lr.E1.toFixed(1)}</td><td class="r">${lr.O0} / ${lr.E0.toFixed(1)}</td></tr>
