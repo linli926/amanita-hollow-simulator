@@ -164,8 +164,11 @@ export function runCaseControlStudy(o, rng) {
   const cases = rows.filter(r => r.case);
   const noncases = rows.filter(r => !r.case);
   const m = Math.max(1, Math.round(o.controlsPerCase));
-  const controls = [];
-  for (let i = 0; i < Math.min(noncases.length, cases.length * m); i++) controls.push(noncases[Math.floor(rng.uniform() * noncases.length)]);
+  // Controls: a simple random sample of non-cases, without replacement (partial Fisher–Yates).
+  const pool = noncases.slice();
+  const nCtrl = Math.min(pool.length, cases.length * m);
+  for (let i = 0; i < nCtrl; i++) { const j = i + Math.floor(rng.uniform() * (pool.length - i)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+  const controls = pool.slice(0, nCtrl);
   const cc = { a: cases.filter(r => r.vax).length, c: cases.filter(r => !r.vax).length, b: controls.filter(r => r.vax).length, d: controls.filter(r => !r.vax).length };
 
   // Test-negative: among the tested, positives are cases and negatives are controls.
@@ -276,4 +279,75 @@ export function simulateVETrial(nPerArm, p0, ve, rng) {
   const t = { a, b: nPerArm - a, c, d: nPerArm - c };
   const rr = a > 0 && c > 0 ? riskRatio(t) : riskRatio({ a: a + 0.5, b: t.b + 0.5, c: c + 0.5, d: t.d + 0.5 });
   return { table: t, rr, ve: toVE(rr), test: chiSquare2x2(t) };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase III trial (Vaccine Lab case study "Phase III")
+
+export const PHASE3 = {
+  pAge: [0.42, 0.38, 0.20],
+  riskByAge: [0.8, 1, 1.4],   // multiples of p0
+  cautionEffect: 0.6,         // cautious residents' relative exposure
+  pCaution: 0.4,
+  received: 0.98,             // share of the vaccine arm that actually receives the injection
+  lost: 0.03,                 // share with no outcome ascertained (missing completely at random)
+};
+
+/**
+ * True values the Phase III analyses estimate, for hidden parameters
+ * h = { ve (ages 18–64), elderlyFactor, p0 }.
+ *  vaccinatedVE: population-average VE among those actually vaccinated (biological effect)
+ *  ittVE:        VE of being randomised to vaccine = received × vaccinatedVE
+ *  subgroupITT:  ITT VE within each age band
+ *  placeboAttack: expected attack rate in the placebo arm
+ */
+export function phase3Truth(h) {
+  const P = PHASE3;
+  const veAge = ag => (ag === 2 ? h.ve * h.elderlyFactor : h.ve);
+  let rv = 0, ru = 0;
+  P.pAge.forEach((pa, ag) => { rv += pa * P.riskByAge[ag] * (1 - veAge(ag)); ru += pa * P.riskByAge[ag]; });
+  const vaccinatedVE = 1 - rv / ru; // caution scales both arms equally and cancels
+  const meanExposure = P.pCaution * P.cautionEffect + (1 - P.pCaution);
+  return {
+    vaccinatedVE,
+    ittVE: P.received * vaccinatedVE,
+    subgroupITT: [0, 1, 2].map(ag => P.received * veAge(ag)),
+    placeboAttack: h.p0 * ru * meanExposure,
+  };
+}
+
+/** Simulate the Phase III trial: screening, randomisation, receipt, losses, outcomes. */
+export function simulatePhase3(h, nPerArm, scheme, rng) {
+  const P = PHASE3;
+  const n = 2 * nPerArm;
+  const people = makePopulation(n, rng, { pAge: P.pAge, pCaution: P.pCaution });
+  const arms = randomise(people.map(p => p.ag), scheme, rng);
+  const excluded = rng.binomial(Math.round(n / 0.82), 0.18);
+  const notEligible = rng.binomial(excluded, 0.62), declined = rng.binomial(excluded - notEligible, 0.75);
+  const all = people.map((p, i) => {
+    const vax = arms[i];
+    const received = vax ? rng.bernoulli(P.received) : 0;
+    const lost = rng.bernoulli(P.lost);
+    const ve = p.ag === 2 ? h.ve * h.elderlyFactor : h.ve;
+    const risk = infectionRisk(p, received, ve, { baseRisk: P.riskByAge.map(m => h.p0 * m), cautionEffect: P.cautionEffect });
+    return { ag: p.ag, vax, received, lost, case: rng.bernoulli(risk) };
+  });
+  const rows = all.filter(r => !r.lost); // ITT among everyone with an outcome
+  const arm = v => all.filter(r => r.vax === v);
+  const consort = {
+    screened: n + excluded, excluded, notEligible, declined, other: excluded - notEligible - declined, randomised: n,
+    arms: [1, 0].map(v => ({
+      allocated: arm(v).length,
+      received: v ? arm(v).filter(r => r.received).length : arm(v).length,
+      notReceived: v ? arm(v).filter(r => !r.received).length : 0,
+      lost: arm(v).filter(r => r.lost).length, analysed: arm(v).filter(r => !r.lost).length,
+    })),
+  };
+  const t = table2x2(rows);
+  const strata = [0, 1, 2].map(ag => table2x2(rows.filter(r => r.ag === ag)));
+  const safeRR = tb => riskRatio(tb.a && tb.c ? tb : { a: tb.a + 0.5, b: tb.b + 0.5, c: tb.c + 0.5, d: tb.d + 0.5 });
+  return {
+    t, strata, consort, n, rr: safeRR(t), mh: mantelHaenszelRR(strata), test: chiSquare2x2(t), sub: strata.map(safeRR),
+    old: [rows.filter(r => r.vax && r.ag === 2).length, rows.filter(r => !r.vax && r.ag === 2).length],
+  };
 }

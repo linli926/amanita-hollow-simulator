@@ -27,15 +27,18 @@ export const BLOCKS = [
   { id: 'rct', title: 'Randomised trials', ref: 'Hackshaw, A Concise Guide to Clinical Trials' },
 ];
 
-export const STUDIES = [
+const ALL_STUDIES = [
   { id: 'confounding', block: 'obs', title: 'Confounding and the case for randomisation', short: 'Confounding vs randomisation', ref: 'Reilly ch. 1–2' },
   { id: 'casecontrol', block: 'obs', title: 'Case–control, logistic regression and test-negative designs', short: 'Case–control & test-negative', ref: 'Reilly ch. 1, 2, 5' },
-  { id: 'sampling', block: 'obs', title: 'Sampling the study base: nested case–control and case–cohort', short: 'Nested case–control & case–cohort', ref: 'Reilly ch. 3, 4, 6, 8' },
-  { id: 'reuse', block: 'obs', title: 'Reusing case–control data for a secondary outcome', short: 'Reusing case–control data', ref: 'Reilly ch. 7' },
+  { id: 'sampling', advanced: true, block: 'obs', title: 'Sampling the study base: nested case–control and case–cohort', short: 'Nested case–control & case–cohort', ref: 'Reilly ch. 3, 4, 6, 8' },
+  { id: 'reuse', advanced: true, block: 'obs', title: 'Reusing case–control data for a secondary outcome', short: 'Reusing case–control data', ref: 'Reilly ch. 7' },
   { id: 'randomisation', block: 'rct', title: 'Randomisation schemes and sample size', short: 'Randomisation & sample size', ref: 'Hackshaw: randomisation, sample size' },
-  { id: 'conduct', block: 'rct', title: 'Non-compliance and interim analyses', short: 'Non-compliance & interim looks', ref: 'Hackshaw: analysis populations, data monitoring' },
+  { id: 'conduct', advanced: true, block: 'rct', title: 'Non-compliance and interim analyses', short: 'Non-compliance & interim looks', ref: 'Hackshaw: analysis populations, data monitoring' },
   { id: 'phase3', block: 'rct', title: 'Phase III trial of the Amanita vaccine', short: 'Phase III trial', ref: 'Hackshaw: design, analysis, CONSORT reporting' },
 ];
+/** Advanced case studies are implemented and tested but hidden until the basics are signed off. */
+export const SHOW_ADVANCED = false;
+export const STUDIES = ALL_STUDIES.filter(s => SHOW_ADVANCED || !s.advanced);
 STUDIES.forEach((s, i) => { s.num = i + 1; });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -76,12 +79,16 @@ export const veStr = m => `${pct(m.est, 1)} <span class="dim">(${pct(m.lo, 1)} t
 
 /** Forest plot of VE estimates on a linear % scale. rows: [{label, est, lo, hi, color}] */
 export function forest(chart, rows, truth, opts = {}) {
-  const lo = Math.max(-1, Math.floor((Math.min(opts.min ?? 0, ...rows.map(r => r.lo)) - 0.02) * 10) / 10);
-  const hi = Math.min(1, Math.ceil((Math.max(opts.max ?? 1, ...rows.map(r => r.hi)) + 0.01) * 10) / 10);
-  const span = Math.round((hi - lo) * 10);
-  const ticks = span <= 10 ? span : span / 2 === Math.round(span / 2) ? span / 2 : span;
+  const rawLo = Math.min(opts.min ?? 0, ...rows.map(r => r.lo)) - 0.02;
+  const rawHi = Math.max(opts.max ?? 1, ...rows.map(r => r.hi)) + 0.01;
   chart.render(c => {
-    c.axes({ pad: { left: Math.min(190, c.W * 0.42), right: 16 }, xMin: lo, xMax: hi, yMin: 0, yMax: rows.length + 1, xTicks: c.W < 560 ? Math.ceil(ticks / 2) : ticks, yTicks: 1,
+    // Axis on whole steps of 10% (or 20% when wide or narrow), clamped to [−100%, 100%]
+    const step = (rawHi - rawLo > 0.8 || c.W < 560) ? 0.2 : 0.1;
+    const lo = Math.max(-1, Math.floor(rawLo / step - 1e-9) * step), hi = Math.min(1, Math.ceil(rawHi / step - 1e-9) * step);
+    const ticks = Math.round((hi - lo) / step);
+    c.ctx.font = '10px "Share Tech Mono", ui-monospace, monospace';
+    const labelW = Math.max(...rows.map(r => c.ctx.measureText(r.label).width)) + 18;
+    c.axes({ pad: { left: Math.min(labelW, c.W * 0.5), right: 16 }, xMin: lo, xMax: hi, yMin: 0, yMax: rows.length + 1, xTicks: ticks, yTicks: 1,
       xFmt: v => Math.round(v * 100) + '%', yFmt: () => '', xLabel: 'vaccine efficacy (1 − ratio)' });
     if (truth !== null && truth !== undefined) c.vline(truth, { color: COLORS.truth, dash: [3, 3], label: `true VE ${pct(truth)}`, labelY: 10 });
     c.vline(0, { color: 'rgba(185,160,115,0.3)', dash: [] });
@@ -100,7 +107,9 @@ export function signed(x) { const v = x * 100; return (v >= 0 ? '+' : '−') + M
 export function forestRatio(chart, rows, truth, label = 'odds ratio (log scale)') {
   const lo = Math.min(...rows.map(r => r.lo), truth ?? Infinity) / 1.15, hi = Math.max(...rows.map(r => r.hi), truth ?? 0) * 1.15;
   chart.render(c => {
-    c.axes({ pad: { left: Math.min(210, c.W * 0.45), right: 16 }, xMin: lo, xMax: hi, logX: true, yMin: 0, yMax: rows.length + 1, xTicks: 4, yTicks: 1,
+    c.ctx.font = '10px "Share Tech Mono", ui-monospace, monospace';
+    const labelW = Math.max(...rows.map(r => c.ctx.measureText(r.label).width)) + 18;
+    c.axes({ pad: { left: Math.min(labelW, c.W * 0.5), right: 16 }, xMin: lo, xMax: hi, logX: true, yMin: 0, yMax: rows.length + 1, xTicks: 4, yTicks: 1,
       xFmt: v => v.toFixed(v < 1 ? 2 : 1), yFmt: () => '', xLabel: label });
     c.vline(1, { color: 'rgba(185,160,115,0.3)', dash: [] });
     if (truth !== null && truth !== undefined) c.vline(truth, { color: COLORS.truth, dash: [3, 3], label: `truth ${truth.toFixed(2)}`, labelY: 10 });

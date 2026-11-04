@@ -4,7 +4,8 @@
 
 import { runConfoundingStudy, runCaseControlStudy, randomise, balance, makePopulation, infectionRisk,
   table2x2, riskRatio, toVE, chiSquare2x2, mantelHaenszelRR, orFromRisks, expectedLogOrSE,
-  sampleSizeTwoProportions, powerTwoProportions, sampleSizeVELowerBound, powerVELowerBound, AGE_GROUPS } from '../stats/design.js';
+  sampleSizeTwoProportions, powerTwoProportions, sampleSizeVELowerBound, powerVELowerBound, AGE_GROUPS,
+  simulatePhase3, phase3Truth, PHASE3 } from '../stats/design.js';
 import { logistic } from '../stats/regression.js';
 import { makeRng, randomSeed } from '../stats/rng.js';
 import { quantile } from '../stats/dist.js';
@@ -28,7 +29,7 @@ export function initLab(ctx) {
 
 export function enterLab(banner) {
   banner(`<em>SPORELAB · VACCINE PROGRAMME.</em> The Sporeford lab has a candidate vaccine. Before it reaches the villages, its efficacy has to be estimated, and the study design determines whether that estimate can be trusted. ` +
-    `Seven applied case studies in two blocks: observational designs and randomised trials. <em>A licensed vaccine from case study 7 reaches Outbreak Response earlier, with the efficacy your trial measured.</em>`);
+    `${STUDIES.length} applied case studies in two blocks: observational designs and randomised trials. <em>A licensed vaccine from the Phase III case study reaches Outbreak Response earlier, with the efficacy your trial measured.</em>`);
   render();
 }
 
@@ -123,10 +124,16 @@ function drawConfounding() {
   const ageBias = crude - age, cautBias = age - full;
   const parts = [];
   parts.push(`The crude observational estimate is <em>${pct(crude, 1)}</em> against a true efficacy of <em>${pct(V.ve1)}</em>, a bias of ${signed(crude - V.ve1)} percentage points.`);
-  if (Math.abs(ageBias) > 0.01) parts.push(V.orAge > 1
-    ? `Older, higher-risk residents vaccinate more often, which makes the vaccinated group look sicker and pulls VE <em>down</em> (confounding by indication). Stratifying by age band moves the estimate by ${signed(-ageBias)} points.`
-    : `Younger, lower-risk residents vaccinate more often, which flatters the vaccine. Stratifying by age band corrects ${signed(-ageBias)} points.`);
-  if (Math.abs(cautBias) > 0.01) parts.push(V.orCaution > 1
+  const noise = 1.5 * r.est.ageAdj.se; // shifts smaller than this are indistinguishable from sampling error
+  const expectAge = Math.sign(1 - V.orAge), expectCaut = Math.sign(V.orCaution - 1);
+  if (Math.abs(V.orAge - 1) < 0.05) parts.push('Age band does not affect uptake here, so it is not a confounder: stratifying by it changes little.');
+  else if (Math.abs(ageBias) < noise * Math.abs(1 - crude) || Math.sign(-ageBias) !== -expectAge) parts.push(`Age should confound here, but in this sample the age adjustment moves the estimate by only ${signed(-ageBias)} points, within sampling noise. Repeat the study to see the average effect.`);
+  else parts.push(V.orAge > 1
+    ? `Older, higher-risk residents vaccinate more often, which makes the vaccinated group look sicker and pulls the crude VE <em>down</em> (confounding by indication). Stratifying by age band moves the estimate by ${signed(-ageBias)} points.`
+    : `Younger, lower-risk residents vaccinate more often, which flatters the vaccine. Stratifying by age band moves the estimate by ${signed(-ageBias)} points.`);
+  if (Math.abs(V.orCaution - 1) < 0.05) parts.push('Caution does not affect uptake here, so it is not a confounder.');
+  else if (Math.sign(cautBias) !== expectCaut) parts.push(`Caution should confound here, but in this sample its effect (${signed(cautBias)} points) is within sampling noise.`);
+  else parts.push(V.orCaution > 1
     ? `Cautious residents both vaccinate more and are exposed less. This <em>healthy-vaccinee effect</em> inflates VE by about ${signed(cautBias)} points. Caution is not in the records, so no adjustment of the real data can remove it. That is <em>residual confounding</em>.`
     : `Cautious residents vaccinate less, which hides part of the vaccine's benefit (${signed(cautBias)} points).`);
   parts.push(`The randomised trial estimates <em>${pct(rct, 1)}</em>. Randomisation balances measured and unmeasured confounders alike, so its only error is sampling error, which shows up in the width of the CI.`);
@@ -223,11 +230,13 @@ function drawCaseControl() {
     return { est: c.or, lo: c.lo, hi: c.hi };
   };
   r.est.cohortAdj = mantelHaenszelRR([0, 1, 2].map(ag => table2x2(r.rows.filter(x => x.ag === ag))));
+  // Clinic-confirmed cohort, also age-adjusted, so its remaining bias is detection bias alone.
+  r.est.survAdj = mantelHaenszelRR([0, 1, 2].map(ag => table2x2(r.rows.filter(x => x.ag === ag).map(x => ({ vax: x.vax, case: x.case && x.tested })))));
   r.est.ccAdj = adj(r.ccRows);
   r.est.tndAdj = adj(r.testedRows);
   const rows = [
     { label: 'Full cohort, age-adj. (MH RR)', ...toVE(r.est.cohortAdj), color: COLORS.R },
-    { label: 'Clinic-confirmed cohort', ...toVE(r.est.surv), color: COLORS.I },
+    { label: 'Clinic-confirmed, age-adj. (MH)', ...toVE(r.est.survAdj), color: COLORS.I },
     { label: `Case–control 1:${V.m}, crude OR`, ...toVE(r.est.cc), color: alpha(COLORS.obs, 0.55) },
     { label: `Case–control, age-adj. (logistic)`, ...toVE(r.est.ccAdj), color: COLORS.obs },
     { label: 'Test-negative, age-adj. (logistic)', ...toVE(r.est.tndAdj), color: COLORS.guess },
@@ -269,7 +278,7 @@ function drawCaseControl() {
   parts.push(`With ${fmt.int(r.nCases)} cases and ${V.m} controls each, the case–control study needs data on about <em>${fmt.int(r.nCases + r.nControls)}</em> people instead of ${fmt.int(V.n2)}. After adjusting for age band it estimates VE at <em>${pct(ve('ccAdj'), 1)}</em> (full cohort, age-adjusted: ${pct(ve('cohortAdj'), 1)}).`);
   if (Math.abs(ve('cc') - ve('ccAdj')) > 0.02) parts.push(`The crude case–control estimate is ${pct(ve('cc'), 1)}. Older residents are both more often vaccinated and more often infected, so age confounds the crude OR. Logistic regression removes it because age band was measured. Sampling on case status does not invalidate the adjusted OR, only the intercept.`);
   if (cur > 0.12) parts.push(`This season's attack rate (${pct(cur, 0)}) is high, so the OR no longer approximates the RR and the case–control estimate overstates efficacy.`);
-  if (V.seekOR > 1.2) parts.push(`Counting only clinic-confirmed cases gives <em>${pct(ve('surv'), 1)}</em>. Vaccinated residents are more often health-seekers and so more often tested, which makes them appear to have <em>more</em> disease. This is <em>detection bias</em>.`);
+  if (V.seekOR > 1.2) parts.push(`Counting only clinic-confirmed cases gives <em>${pct(ve('survAdj'), 1)}</em>, even after adjusting for age. Vaccinated residents are more often health-seekers and so more often tested, which makes them appear to have <em>more</em> disease. This is <em>detection bias</em>.`);
   parts.push(V.veOther > 0.02
     ? `The test-negative estimate (<em>${pct(ve('tndAdj'), 1)}</em>) is biased downward here. Because the vaccine also prevents some "valley fever", vaccinated people are under-represented among test-negative controls. This breaks the design's key assumption.`
     : `The age-adjusted test-negative design estimates <em>${pct(ve('tndAdj'), 1)}</em>. Health-seeking drives testing equally in cases and controls, so the bias cancels out of the odds ratio. That is why public-health agencies favour this design for routine vaccine monitoring.`);
@@ -403,7 +412,7 @@ function drawSampleSize() {
     <tr><td style="color:${COLORS.R}">Lower 95% bound &gt; 30%</td><td class="r">${isFinite(nLic) ? fmt.int(nLic) : '∞'}</td><td class="r">${isFinite(nLic) ? fmt.int(2 * nLic) : '∞'}</td><td class="r">${isFinite(nLic) ? fmt.int(expCases(nLic)) : '—'}</td></tr>
   </table>
   <p class="dim" style="margin-top:8px;font-size:10.5px;line-height:1.6">Power is driven by the number of <em>cases</em>, not participants: halving the attack rate roughly doubles the sample size. Showing the vaccine beats a 30% bar needs ${isFinite(nLic) ? (nLic / nSup).toFixed(1) + '×' : 'far'} more participants than showing it beats placebo. ${ve <= 0.35 ? 'An expected VE this close to 30% makes the licensure criterion almost unreachable.' : ''}</p>
-  <p class="dim" style="font-size:10.5px">These assumptions carry into case study 7.</p>`);
+  <p class="dim" style="font-size:10.5px">These assumptions carry into the Phase III case study.</p>`);
 }
 
 // ═════════════════════════ Study 4 · Phase III ═════════════════════════
@@ -411,19 +420,6 @@ function drawSampleSize() {
 function newHidden() {
   const rng = makeRng(randomSeed());
   hidden = { ve: Math.round(rng.range(0.45, 0.85) * 100) / 100, p0: Math.round(rng.range(0.025, 0.065) * 1000) / 1000, elderlyFactor: 0.75, seed: randomSeed() };
-}
-
-/** Population-average VE: the estimand of the ITT analysis, averaging over age bands and caution. */
-function marginalVE(h) {
-  const pAge = [0.42, 0.38, 0.20], base = [h.p0 * 0.8, h.p0, h.p0 * 1.4];
-  let rv = 0, ru = 0;
-  pAge.forEach((pa, ag) => {
-    const ve = ag === 2 ? h.ve * h.elderlyFactor : h.ve;
-    // Caution scales exposure equally in both arms, so it cancels from the ratio.
-    rv += pa * base[ag] * (1 - ve);
-    ru += pa * base[ag];
-  });
-  return 1 - rv / ru;
 }
 
 export function approvalWeek(nPerArm) { return 3 + Math.ceil((2 * nPerArm) / 3000); }
@@ -436,7 +432,7 @@ function renderPhase3() {
     ${sliderHTML('l4-n', 'Participants per arm', 200, 12000, 100, V.nArm)}
     <div class="param"><div class="param-top"><span>Randomisation</span></div>
       <div class="seg" id="l4-scheme">${SCHEMES.map(([id, label]) => `<button data-s="${id}" class="${V.scheme === id ? 'on' : ''}">${label.replace(' (4)', '')}</button>`).join('')}</div></div>
-    <div class="note" style="margin-top:4px">Planning assumptions from case study 5: attack rate ${pct(V.p0, 1)}, VE ${pct(V.veExp)}, power ${pct(V.power)} → <em>${isFinite(plan) ? fmt.int(plan) : '∞'} per arm</em>. <button class="link-btn" id="l4-use">Use this</button></div>
+    <div class="note" style="margin-top:4px">Planning assumptions from the sample-size case study: attack rate ${pct(V.p0, 1)}, VE ${pct(V.veExp)}, power ${pct(V.power)} → <em>${isFinite(plan) ? fmt.int(plan) : '∞'} per arm</em>. <button class="link-btn" id="l4-use">Use this</button></div>
     <div class="note" id="l4-time" style="margin-top:6px"></div>
     <button class="btn btn-green" id="l4-run" style="margin-top:10px">▶ RUN THE PHASE III TRIAL</button>
     <button class="btn" id="l4-new">⟳ NEW CANDIDATE (UNKNOWN TRUTH)</button>`);
@@ -464,41 +460,13 @@ function renderPhase3() {
 
 async function runPhase3() {
   const btn = $('#l4-run'); btn.disabled = true; btn.textContent = '▶ ENROLLING…';
-  results.p3 = await defer(() => {
-    const rng = makeRng(randomSeed());
-    const n = 2 * V.nArm;
-    const people = makePopulation(n, rng);
-    const arms = randomise(people.map(p => p.ag), V.scheme, rng);
-    // Screening before randomisation (CONSORT "assessed for eligibility")
-    const excluded = rng.binomial(Math.round(n / 0.82), 0.18);
-    const notEligible = rng.binomial(excluded, 0.62), declined = rng.binomial(excluded - notEligible, 0.75);
-    const all = people.map((p, i) => {
-      const vax = arms[i];
-      const received = rng.bernoulli(0.98);              // a few never get their allocated injection
-      const lost = rng.bernoulli(0.03);                  // no outcome ascertained
-      const ve = p.ag === 2 ? hidden.ve * hidden.elderlyFactor : hidden.ve;
-      const risk = infectionRisk(p, vax && received, ve, { baseRisk: [hidden.p0 * 0.8, hidden.p0, hidden.p0 * 1.4], cautionEffect: 0.6 });
-      return { ag: p.ag, vax, received, lost, case: rng.bernoulli(risk) };
-    });
-    const rows = all.filter(r => !r.lost);                // ITT on everyone with an outcome
-    const arm = v => all.filter(r => r.vax === v);
-    const consort = {
-      screened: n + excluded, excluded, notEligible, declined, other: excluded - notEligible - declined, randomised: n,
-      arms: [1, 0].map(v => ({ allocated: arm(v).length, received: arm(v).filter(r => r.received).length, notReceived: arm(v).filter(r => !r.received).length,
-        lost: arm(v).filter(r => r.lost).length, analysed: arm(v).filter(r => !r.lost).length })),
-    };
-    const t = table2x2(rows);
-    const strata = [0, 1, 2].map(ag => table2x2(rows.filter(r => r.ag === ag)));
-    const safeRR = tb => riskRatio(tb.a && tb.c ? tb : { a: tb.a + 0.5, b: tb.b + 0.5, c: tb.c + 0.5, d: tb.d + 0.5 });
-    return { t, strata, consort, rr: safeRR(t), mh: mantelHaenszelRR(strata), test: chiSquare2x2(t), sub: strata.map(safeRR), n, nArm: V.nArm, scheme: V.scheme,
-      old: [rows.filter(r => r.vax && r.ag === 2).length, rows.filter(r => !r.vax && r.ag === 2).length] };
-  });
+  results.p3 = await defer(() => ({ ...simulatePhase3(hidden, V.nArm, V.scheme, makeRng(randomSeed())), nArm: V.nArm, scheme: V.scheme }));
   btn.disabled = false; btn.textContent = '▶ RUN THE PHASE III TRIAL';
   drawPhase3();
   const P = results.p3, ve = toVE(P.rr);
   const licensed = ve.est >= 0.5 && ve.lo > 0.3;
   if (licensed) {
-    update({ vaccine: { ve: marginalVE(hidden), est: ve.est, lo: ve.lo, hi: ve.hi, week: approvalWeek(P.nArm) } });
+    update({ vaccine: { ve: phase3Truth(hidden).vaccinatedVE, est: ve.est, lo: ve.lo, hi: ve.hi, week: approvalWeek(P.nArm) } });
     toast(`Licensed. VE ${pct(ve.est, 1)} (95% CI ${pct(ve.lo, 0)}–${pct(ve.hi, 0)}). The vaccine reaches Outbreak Response in week ${approvalWeek(P.nArm)}.`);
   } else toast(`Not licensed: VE ${pct(ve.est, 1)}, lower bound ${pct(ve.lo, 1)}.`);
 }
@@ -529,7 +497,7 @@ function drawPhase3() {
         </table>
         <div class="interp" style="margin-top:8px"><p>${phase3Interp(P, ve, licensed)}</p></div>
         <button class="btn" id="l4-reveal" style="margin-top:8px" ${revealed ? 'disabled' : ''}>◉ REVEAL THE TRUE EFFICACY</button>
-        <div id="l4-truth" class="note" style="margin-top:6px" ${revealed ? '' : 'hidden'}>True efficacy: <em>${pct(hidden.ve)}</em> in ages 18–64 and <em>${pct(hidden.ve * hidden.elderlyFactor)}</em> in 65+, so the population-average VE (the estimand of the ITT analysis) is <em>${pct(marginalVE(hidden), 1)}</em>. Placebo attack rate around <em>${pct(hidden.p0, 1)}</em>. ${ve.lo <= marginalVE(hidden) && marginalVE(hidden) <= ve.hi ? 'Your CI covered the true population-average VE.' : 'Your CI missed the true population-average VE (expected about 1 time in 20).'}</div>
+        <div id="l4-truth" class="note" style="margin-top:6px" ${revealed ? '' : 'hidden'}>${truthText(ve)}</div>
       </div>
     </div>`);
   const rows = [
@@ -543,12 +511,22 @@ function drawPhase3() {
     prevDraw(c);
     c.vline(0.3, { color: alpha(COLORS.obs, 0.7), dash: [2, 3], label: '30% bar', labelY: 10 });
     if (revealed) {
-      const truths = [marginalVE(hidden), hidden.ve, hidden.ve, hidden.ve * hidden.elderlyFactor];
+      const T = phase3Truth(hidden);
+      const truths = [T.ittVE, ...T.subgroupITT];
       c.marks(truths, truths.map((_, i) => rows.length - i), { shape: 'cross', color: COLORS.truth, size: 5, width: 1.5 });
     }
   }, ch.tooltipFn);
-  html('l4-forest-cap', revealed ? '× = true VE for each row (overall row: population average).' : '');
+  html('l4-forest-cap', revealed ? '× = the true value each row estimates (ITT: effect of being randomised to vaccine).' : '');
   $('#l4-reveal').addEventListener('click', () => { results.p3revealed = true; drawPhase3(); });
+}
+
+function truthText(ve) {
+  const T = phase3Truth(hidden);
+  const covered = ve.lo <= T.ittVE && T.ittVE <= ve.hi;
+  return `True efficacy in those vaccinated: <em>${pct(hidden.ve)}</em> in ages 18–64 and <em>${pct(hidden.ve * hidden.elderlyFactor)}</em> in 65+, which averages to <em>${pct(T.vaccinatedVE, 1)}</em> across the population. ` +
+    `Because ${pct(1 - PHASE3.received)} of the vaccine arm never received the injection, the ITT analysis estimates <em>${pct(PHASE3.received, 0)} × ${pct(T.vaccinatedVE, 1)} = ${pct(T.ittVE, 1)}</em>. ` +
+    `Expected placebo attack rate: <em>${pct(T.placeboAttack, 2)}</em>. ` +
+    (covered ? 'Your 95% CI covered the true ITT efficacy.' : 'Your 95% CI missed the true ITT efficacy, which should happen about 1 time in 20.');
 }
 
 /** CONSORT 2010 participant flow diagram. */

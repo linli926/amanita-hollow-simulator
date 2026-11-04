@@ -9,7 +9,7 @@ A flood has torn open a cavern beneath the valley of **Amanita Hollow**, releasi
 | **I · Outbreak Architect** | the pathogen | Design R₀, latent and infectious periods, CFR, population and immunity, then watch the outbreak run deterministically or as a stochastic ensemble | SEIRD ODE (RK4), Gillespie SSA, tau-leaping, final-size equation, branching-process extinction, Euler–Lotka growth rate |
 | **II · Field Epidemiologist** | the detective | Estimate R₀ and the reporting rate from noisy, incomplete clinic data. Wait for more data, auto-fit, forecast the peak, then reveal the truth | Negative-binomial likelihood, Nelder–Mead MLE, profile-likelihood CI with a misspecification adjustment, Poisson GLM (IRLS), Cori Rₜ |
 | **III · Clinical Trial** | the biostatistician | Design and run a randomised trial of the antifungal *Volvarin*: sample size, accrual, follow-up, dropout | Weibull PH simulation, block randomisation, Kaplan–Meier + Greenwood, log-rank, Cox PH (Newton–Raphson), C-index, Nelson–Aalen, log(−log) PH check, Schoenfeld power + Monte Carlo power |
-| **V · Vaccine Lab** | the study designer | Seven applied case studies in two blocks, mapped to Reilly, *Controlled Epidemiological Studies* and Hackshaw, *A Concise Guide to Clinical Trials* | Confounding and Mantel–Haenszel stratification; case–control with logistic regression (IRLS) and the test-negative design; nested case–control (risk-set sampling, conditional logistic regression) vs case–cohort (Barlow-weighted Cox, robust variance) vs full cohort; reusing case–control data for a secondary outcome (IPW); ITT vs per-protocol vs as-treated vs CACE; group-sequential monitoring (Pocock, O'Brien–Fleming); simple vs block vs stratified randomisation; sample size and power for VE > 0 and for the licensure criterion (lower bound > 30%); Phase III trial with subgroup analysis and a CONSORT flow diagram |
+| **V · Vaccine Lab** | the study designer | Four core case studies (three advanced ones are implemented but hidden for now) in two blocks, mapped to Reilly, *Controlled Epidemiological Studies* and Hackshaw, *A Concise Guide to Clinical Trials* | Confounding and Mantel–Haenszel stratification; case–control with logistic regression (IRLS) and the test-negative design; nested case–control (risk-set sampling, conditional logistic regression) vs case–cohort (Barlow-weighted Cox, robust variance) vs full cohort; reusing case–control data for a secondary outcome (IPW); ITT vs per-protocol vs as-treated vs CACE; group-sequential monitoring (Pocock, O'Brien–Fleming); simple vs block vs stratified randomisation; sample size and power for VE > 0 and for the licensure criterion (lower bound > 30%); Phase III trial with subgroup analysis and a CONSORT flow diagram |
 | **IV · Outbreak Response** | the commander | Run a 20-week campaign across six villages on a budget: lockdowns, travel bans, test & isolate, vaccines, and treatment if your trial succeeded | Stochastic metapopulation SEIRD, gravity-model mobility, next-generation matrix Rₜ (power iteration), counterfactual replicates for grading |
 
 The modes are linked. The pathogen you release in I becomes the case file in II. A significant trial in III unlocks treatment in IV, with the true hazard ratio you set. A Phase III vaccine trial in V that meets the licensure criterion brings the vaccine to IV earlier (larger trials take longer to enrol), with its true population-average efficacy; otherwise only an unproven batch arrives in week 8.
@@ -43,6 +43,27 @@ They require Node 18 or newer and no installs. Among other things they check:
 - **Study design**: the Mantel–Haenszel RR recovers a common RR under Simpson's paradox; the two-proportion sample size reproduces the textbook 2,319 per arm (p₀ = 2%, p₁ = 1%, 80% power); simulated VE trials match analytic power; the case–control and test-negative estimates recover the true VE, while crude observational estimates are biased.
 - **Epidemiological designs**: logistic regression reproduces the 2×2 OR and Woolf SE; conditional logistic regression gives the McNemar OR b/c; nested case–control and case–cohort recover the full-cohort hazard ratio; IPW recovers the population OR for a secondary outcome; CACE recovers complier efficacy while per-protocol is biased; naive testing at 5 looks gives the textbook 14% type I error, Pocock and O'Brien–Fleming hold 5%.
 - **The game engine is reproducible** (same seed gives the same campaign), conserves population, and interventions beat the counterfactual.
+
+### Validation of the Vaccine Lab experiments
+
+`tests/validation.test.mjs` repeats each study many times and compares the estimates with the known truth of the simulation:
+
+| Experiment | Analysis | Bias (VE points) | 95% CI coverage |
+|---|---|---|---|
+| Confounding (true VE 60%, 300 studies) | Randomised trial | +0.2 | 95.7% |
+| | MH, adjusted for age + caution | 0.0 | 96.7% |
+| | Crude observational | −3.5 | 85.3% |
+| | MH, age only (caution unmeasured) | +7.5 | 57.3% |
+| Case–control (true VE 60%, 200 studies) | Full cohort, MH age-adjusted | 0.0 | 95.5% |
+| | Case–control 1:4, logistic, age-adjusted | +0.9 | 95.5% |
+| | Test-negative, logistic, age-adjusted | +0.7 | 96.5% |
+| | Case–control, crude OR | −11.5 | 27.5% |
+| | Clinic-confirmed cohort (detection bias) | −13.3 | 35.5% |
+| Phase III (ITT estimand 68.3%, 400 trials) | ITT risk ratio | −0.2 | 96.3% |
+
+Analytic power for the licensure criterion (lower bound > 30%) agrees with simulation to within 1–3 points (e.g. 90.0% vs 91.2% at 2,869 per arm). The log-RR normal approximation is slightly conservative when few cases are expected.
+
+The Phase III estimand needs care: 2% of the vaccine arm never receives the injection, so ITT estimates 0.98 × the population-average efficacy among the vaccinated, and efficacy is lower in residents aged 65+.
 
 ### A note on confidence-interval coverage
 
