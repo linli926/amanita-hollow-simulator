@@ -1,7 +1,10 @@
-About
-An interactive web-based epidemic modeling tool built to apply concepts from graduate biostatistics 
-coursework (Infectious Disease Modeling and Survival Analysis) to simulated outbreak scenarios.
+## About
 
+This project began in a lecture. In Spring 2026, while my professor was teaching *The Mathematics and Statistics of Infectious Disease Outbreaks*, my mind wandered, and I started wondering: what if I could build a web game where I control an outbreak myself, and learn the material by watching it unfold?
+
+That idea became the first version of Amanita Hollow, an interactive epidemic modeling tool. As I kept building, I brought in what I was learning in *Survival Analysis*, adding a treatment trial that compares survival between patients. Later, *Study Design and Analysis in Medical Research* made me realize the story could continue: the same outbreak could drive the design of a vaccine trial, and only a vaccine proven to work could be given to the villagers. *Mathematics of Causal Inference* shaped how those studies are analyzed, showing why observational data can mislead and why randomization reveals cause and effect.
+
+Today the project follows one simulated pathogen from spread, to estimation, to treatment and vaccine trials, to the public-health response, with each step built on a different course.
 ---
 
 # Amanita Hollow — Epidemic Intelligence Terminal
