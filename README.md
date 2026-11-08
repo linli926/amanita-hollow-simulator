@@ -5,13 +5,14 @@ This project began in a lecture. In Spring 2026, while my professor was teaching
 That idea became the first version of Amanita Hollow, an interactive epidemic modeling tool. As I kept building, I brought in what I was learning in *Survival Analysis*, adding a treatment trial that compares survival between patients. Later, *Study Design and Analysis in Medical Research* made me realize the story could continue: the same outbreak could drive the design of a vaccine trial, and only a vaccine proven to work could be given to the villagers. *Mathematics of Causal Inference* shaped how those studies are analyzed, showing why observational data can mislead and why randomization reveals cause and effect.
 
 Today the project follows one simulated pathogen from spread, to estimation, to treatment and vaccine trials, to the public-health response, with each step built on a different course.
+
 ---
 
 # Amanita Hollow — Epidemic Intelligence Terminal
 
 **▶ Play online: https://linli926.github.io/amanita-hollow-simulator/**
 
-An interactive outbreak game built on infectious-disease modelling and survival-analysis methods.
+An interactive outbreak game built on infectious disease modeling, survival analysis, study design and causal inference.
 
 A flood has torn open a cavern beneath the valley of **Amanita Hollow**, releasing the spores of an unclassified *Amanita* species. You play five roles in turn:
 
